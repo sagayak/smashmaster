@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import { Team, Match } from '../types';
+import { Team, Match, Tournament } from '../types';
 
 const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
 const supabaseKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
@@ -9,110 +9,117 @@ const isCloudEnabled = supabaseUrl && supabaseKey;
 const supabase = isCloudEnabled ? createClient(supabaseUrl, supabaseKey) : null;
 
 export const api = {
-  async getTeams(): Promise<Team[]> {
+  // --- Tournament Methods ---
+  async getTournaments(): Promise<Tournament[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('teams').select('*');
-      if (error) throw error;
+      const { data, error } = await supabase.from('tournaments').select('*').order('createdAt', { ascending: false });
+      if (error) return [];
+      return data || [];
+    }
+    const local = localStorage.getItem('smashmaster_tournaments');
+    return local ? JSON.parse(local) : [];
+  },
+
+  async saveTournament(tournament: Tournament): Promise<void> {
+    if (supabase) {
+      await supabase.from('tournaments').insert([tournament]);
+      return;
+    }
+    const list = await this.getTournaments();
+    localStorage.setItem('smashmaster_tournaments', JSON.stringify([tournament, ...list]));
+  },
+
+  async deleteTournament(id: string): Promise<void> {
+    if (supabase) {
+      await supabase.from('matches').delete().eq('tournamentId', id);
+      await supabase.from('teams').delete().eq('tournamentId', id);
+      await supabase.from('tournaments').delete().eq('id', id);
+      return;
+    }
+    const list = await this.getTournaments();
+    localStorage.setItem('smashmaster_tournaments', JSON.stringify(list.filter(t => t.id !== id)));
+    // Also cleanup local storage data for that tournament
+    const teams = JSON.parse(localStorage.getItem('smashmaster_teams') || '[]');
+    const matches = JSON.parse(localStorage.getItem('smashmaster_matches') || '[]');
+    localStorage.setItem('smashmaster_teams', JSON.stringify(teams.filter((t: any) => t.tournamentId !== id)));
+    localStorage.setItem('smashmaster_matches', JSON.stringify(matches.filter((m: any) => m.tournamentId !== id)));
+  },
+
+  // --- Scoped Data Methods ---
+  async getTeams(tournamentId: string): Promise<Team[]> {
+    if (supabase) {
+      const { data } = await supabase.from('teams').select('*').eq('tournamentId', tournamentId);
       return data || [];
     }
     const local = localStorage.getItem('smashmaster_teams');
-    return local ? JSON.parse(local) : [];
+    const all = local ? JSON.parse(local) : [];
+    return all.filter((t: Team) => t.tournamentId === tournamentId);
   },
 
   async saveTeam(team: Team): Promise<void> {
     if (supabase) {
-      const { error } = await supabase.from('teams').insert([team]);
-      if (error) throw error;
+      await supabase.from('teams').insert([team]);
       return;
     }
-    const teams = await this.getTeams();
-    localStorage.setItem('smashmaster_teams', JSON.stringify([...teams, team]));
+    const local = localStorage.getItem('smashmaster_teams');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_teams', JSON.stringify([...all, team]));
   },
 
   async deleteTeam(id: string): Promise<void> {
     if (supabase) {
-      const { error } = await supabase.from('teams').delete().eq('id', id);
-      if (error) throw error;
+      await supabase.from('teams').delete().eq('id', id);
       return;
     }
-    const teams = await this.getTeams();
-    localStorage.setItem('smashmaster_teams', JSON.stringify(teams.filter(t => t.id !== id)));
+    const local = localStorage.getItem('smashmaster_teams');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_teams', JSON.stringify(all.filter((t: Team) => t.id !== id)));
   },
 
-  async getMatches(): Promise<Match[]> {
+  async getMatches(tournamentId: string): Promise<Match[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('matches').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      const { data } = await supabase.from('matches').select('*').eq('tournamentId', tournamentId);
+      return (data || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     }
     const local = localStorage.getItem('smashmaster_matches');
-    return local ? JSON.parse(local) : [];
+    const all = local ? JSON.parse(local) : [];
+    return all.filter((m: Match) => m.tournamentId === tournamentId).sort((a: any, b: any) => b.createdAt - a.createdAt);
   },
 
   async saveMatch(match: Match): Promise<void> {
     if (supabase) {
-      const { error } = await supabase.from('matches').insert([match]);
-      if (error) throw error;
+      const payload = { ...match, created_at: new Date(match.createdAt).toISOString() };
+      await supabase.from('matches').insert([payload]);
       return;
     }
-    const matches = await this.getMatches();
-    localStorage.setItem('smashmaster_matches', JSON.stringify([...matches, match]));
+    const local = localStorage.getItem('smashmaster_matches');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_matches', JSON.stringify([...all, match]));
   },
 
   async updateMatch(match: Match): Promise<void> {
     if (supabase) {
-      const { error } = await supabase.from('matches').update(match).eq('id', match.id);
-      if (error) throw error;
+      await supabase.from('matches').update(match).eq('id', match.id);
       return;
     }
-    const matches = await this.getMatches();
-    localStorage.setItem('smashmaster_matches', JSON.stringify(matches.map(m => m.id === match.id ? match : m)));
+    const local = localStorage.getItem('smashmaster_matches');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_matches', JSON.stringify(all.map((m: Match) => m.id === match.id ? match : m)));
   },
 
   async deleteMatch(id: string): Promise<void> {
     if (supabase) {
-      const { error } = await supabase.from('matches').delete().eq('id', id);
-      if (error) throw error;
+      await supabase.from('matches').delete().eq('id', id);
       return;
     }
-    const matches = await this.getMatches();
-    localStorage.setItem('smashmaster_matches', JSON.stringify(matches.filter(m => m.id !== id)));
+    const local = localStorage.getItem('smashmaster_matches');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_matches', JSON.stringify(all.filter((m: Match) => m.id !== id)));
   },
 
-  async clearAll(): Promise<void> {
-    if (supabase) {
-      // Deleting all rows requires a filter, using a non-matching ID or range
-      await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('teams').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      return;
-    }
-    localStorage.removeItem('smashmaster_teams');
-    localStorage.removeItem('smashmaster_matches');
-  },
-
-  /**
-   * Listens for changes in the database and calls the callback.
-   * Returns an unsubscribe function.
-   */
   subscribeToChanges(onUpdate: () => void): () => void {
     if (!supabase) return () => {};
-
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'teams' },
-        () => onUpdate()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'matches' },
-        () => onUpdate()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const channel = supabase.channel('schema-db-changes').on('postgres_changes', { event: '*', schema: 'public' }, onUpdate).subscribe();
+    return () => supabase.removeChannel(channel);
   }
 };

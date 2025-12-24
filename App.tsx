@@ -15,20 +15,25 @@ import {
   RotateCcw,
   Lock,
   Unlock,
-  Loader2
+  Loader2,
+  RefreshCw,
+  LayoutGrid
 } from 'lucide-react';
-import { Team, Match, ViewState, StandingsEntry, GameScore } from './types';
+import { Team, Match, ViewState, StandingsEntry, GameScore, Tournament } from './types';
 import TeamManager from './components/TeamManager';
 import MatchManager from './components/MatchManager';
 import MatchScorer from './components/MatchScorer';
 import Standings from './components/Standings';
 import Dashboard from './components/Dashboard';
+import TournamentSelector from './components/TournamentSelector';
 import { api } from './lib/api';
 
 const ADMIN_PIN = "1218";
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -37,39 +42,65 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [showPinModal, setShowPinModal] = useState<boolean>(false);
   const [pinInput, setPinInput] = useState<string>("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Initial Data Fetch
-  const fetchData = useCallback(async () => {
+  // Initial Tournaments Fetch
+  const fetchTournaments = useCallback(async () => {
+    const list = await api.getTournaments();
+    setTournaments(list);
+    setLoading(false);
+  }, []);
+
+  // Fetch Scoped Data
+  const fetchData = useCallback(async (isManual = false) => {
+    if (!selectedTournamentId) return;
+    if (isManual) setIsRefreshing(true);
     try {
-      const [t, m] = await Promise.all([api.getTeams(), api.getMatches()]);
+      const [t, m] = await Promise.all([
+        api.getTeams(selectedTournamentId), 
+        api.getMatches(selectedTournamentId)
+      ]);
       setTeams(t);
       setMatches(m);
       setLastSaved(new Date().toLocaleTimeString());
     } catch (err) {
       console.error("Failed to fetch data:", err);
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
-  }, []);
+  }, [selectedTournamentId]);
 
   useEffect(() => {
-    // Initial load
-    fetchData();
-
-    // Check if was admin in this session
+    fetchTournaments();
     const adminStatus = sessionStorage.getItem('smashmaster_admin');
     if (adminStatus === 'true') setIsAdmin(true);
-    
-    // Setup Real-time Subscription for instant cloud updates
-    const unsubscribe = api.subscribeToChanges(() => {
-      console.log("Database update detected, refreshing...");
-      fetchData();
-    });
+  }, [fetchTournaments]);
 
-    return () => {
-      unsubscribe();
+  useEffect(() => {
+    if (selectedTournamentId) {
+      fetchData();
+      const unsubscribe = api.subscribeToChanges(() => fetchData());
+      return () => unsubscribe();
+    }
+  }, [selectedTournamentId, fetchData]);
+
+  // Tournament Handlers
+  const handleCreateTournament = async (name: string) => {
+    const newTournament: Tournament = {
+      id: crypto.randomUUID(),
+      name,
+      createdAt: Date.now(),
+      status: 'active'
     };
-  }, [fetchData]);
+    await api.saveTournament(newTournament);
+    await fetchTournaments();
+  };
+
+  const handleDeleteTournament = async (id: string) => {
+    await api.deleteTournament(id);
+    await fetchTournaments();
+    if (selectedTournamentId === id) setSelectedTournamentId(null);
+  };
 
   // Auth Handlers
   const handlePinSubmit = (e: React.FormEvent) => {
@@ -92,27 +123,32 @@ const App: React.FC = () => {
 
   const triggerAdminLogin = () => setShowPinModal(true);
 
-  // Handlers
+  // Scoped Data Handlers
   const addTeam = async (team: Team) => {
     if (!isAdmin) return triggerAdminLogin();
-    await api.saveTeam(team);
-    // Real-time listener will trigger fetchData automatically
+    const newTeam = { ...team, tournamentId: selectedTournamentId! };
+    await api.saveTeam(newTeam);
+    await fetchData();
   };
 
   const removeTeam = async (id: string) => {
     if (!isAdmin) return triggerAdminLogin();
     await api.deleteTeam(id);
+    await fetchData();
   };
   
   const createMatch = async (match: Match) => {
     if (!isAdmin) return triggerAdminLogin();
-    await api.saveMatch(match);
+    const newMatch = { ...match, tournamentId: selectedTournamentId! };
+    await api.saveMatch(newMatch);
+    await fetchData();
     setView('matches');
   };
 
   const deleteMatch = async (id: string) => {
     if (!isAdmin) return triggerAdminLogin();
     await api.deleteMatch(id);
+    await fetchData();
   };
 
   const startMatch = (id: string) => {
@@ -122,16 +158,7 @@ const App: React.FC = () => {
 
   const updateMatch = async (updatedMatch: Match) => {
     await api.updateMatch(updatedMatch);
-  };
-
-  const resetTournament = async () => {
-    if (!isAdmin) return triggerAdminLogin();
-    if (window.confirm('Are you absolutely sure? This will delete all cloud/local data for this tournament.')) {
-      setLoading(true);
-      await api.clearAll();
-      await fetchData();
-      setView('dashboard');
-    }
+    await fetchData();
   };
 
   const calculateStandings = useCallback((): StandingsEntry[] => {
@@ -178,18 +205,56 @@ const App: React.FC = () => {
   const standings = calculateStandings();
   const top4 = standings.slice(0, 4);
   const activeMatch = matches.find(m => m.id === activeMatchId);
+  const currentTournament = tournaments.find(t => t.id === selectedTournamentId);
+
+  if (!selectedTournamentId && !loading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <TournamentSelector 
+          tournaments={tournaments}
+          onSelect={setSelectedTournamentId}
+          onCreate={handleCreateTournament}
+          onDelete={handleDeleteTournament}
+          isAdmin={isAdmin}
+          onAdminLogin={triggerAdminLogin}
+        />
+        {showPinModal && (
+          <PinModal 
+            pinInput={pinInput} 
+            setPinInput={setPinInput} 
+            onSubmit={handlePinSubmit} 
+            onCancel={() => setShowPinModal(false)} 
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('dashboard')}>
-              <div className="bg-indigo-600 p-2 rounded-lg shadow-sm">
-                <Trophy className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-4">
+              <div 
+                className="flex items-center gap-2 cursor-pointer group" 
+                onClick={() => setView('dashboard')}
+              >
+                <div className="bg-indigo-600 p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+                  <Trophy className="w-5 h-5 text-white" />
+                </div>
+                <div className="hidden sm:block">
+                  <h1 className="text-lg font-black text-slate-900 leading-tight">SmashMaster</h1>
+                  <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">{currentTournament?.name}</p>
+                </div>
               </div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight hidden sm:block">SmashMaster</h1>
+              <button 
+                onClick={() => setSelectedTournamentId(null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                Switch
+              </button>
             </div>
 
             <nav className="flex items-center gap-1 sm:gap-4">
@@ -222,52 +287,20 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* PIN Modal */}
       {showPinModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex flex-col items-center text-center mb-6">
-              <div className="bg-indigo-100 p-3 rounded-full mb-4">
-                <Lock className="w-6 h-6 text-indigo-600" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">Admin Authentication</h3>
-              <p className="text-slate-500 text-sm mt-1">Enter your secret PIN to unlock tournament management.</p>
-            </div>
-            <form onSubmit={handlePinSubmit} className="space-y-4">
-              <input 
-                autoFocus
-                type="password"
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                placeholder="Enter PIN"
-                className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black"
-              />
-              <div className="flex gap-3">
-                <button 
-                  type="submit"
-                  className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100"
-                >
-                  Unlock
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => { setShowPinModal(false); setPinInput(""); }}
-                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <PinModal 
+          pinInput={pinInput} 
+          setPinInput={setPinInput} 
+          onSubmit={handlePinSubmit} 
+          onCancel={() => setShowPinModal(false)} 
+        />
       )}
 
-      {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
         {loading && (
           <div className="absolute inset-0 bg-slate-50/50 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pt-20">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-            <p className="text-slate-500 font-medium animate-pulse">Syncing tournament data...</p>
+            <p className="text-slate-500 font-medium animate-pulse">Archiving/Syncing tournament data...</p>
           </div>
         )}
 
@@ -277,7 +310,7 @@ const App: React.FC = () => {
             matches={matches} 
             standings={standings} 
             onNavigate={setView} 
-            onReset={resetTournament}
+            onReset={() => setSelectedTournamentId(null)}
             isAdmin={isAdmin}
             onAdminLogin={triggerAdminLogin}
           />
@@ -323,6 +356,7 @@ const App: React.FC = () => {
             onAddTieUp={(t1, t2) => {
               const newMatch: Match = {
                 id: crypto.randomUUID(),
+                tournamentId: selectedTournamentId!,
                 team1Id: t1,
                 team2Id: t2,
                 status: 'scheduled',
@@ -338,13 +372,22 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-slate-500 text-sm">
-          <div>&copy; {new Date().getFullYear()} SmashMaster Badminton Tournament Pro</div>
-          <div className="flex items-center gap-2 text-xs bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-            <Save className="w-3 h-3 text-emerald-500" />
-            Synced at {lastSaved}
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-slate-500 text-sm">
+          <div>&copy; {new Date().getFullYear()} SmashMaster Pro • {currentTournament?.name}</div>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => fetchData(true)}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 text-indigo-600 font-bold hover:text-indigo-800 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Sync Data'}
+            </button>
+            <div className="flex items-center gap-2 text-xs bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+              <Save className="w-3 h-3 text-emerald-500" />
+              Auto-archived: {lastSaved}
+            </div>
           </div>
         </div>
       </footer>
@@ -352,20 +395,39 @@ const App: React.FC = () => {
   );
 };
 
-interface NavButtonProps {
-  active: boolean;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}
+const PinModal = ({ pinInput, setPinInput, onSubmit, onCancel }: any) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="flex flex-col items-center text-center mb-6">
+        <div className="bg-indigo-100 p-3 rounded-full mb-4">
+          <Lock className="w-6 h-6 text-indigo-600" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">Admin Authentication</h3>
+        <p className="text-slate-500 text-sm mt-1">Enter your secret PIN to unlock tournament management.</p>
+      </div>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <input 
+          autoFocus
+          type="password"
+          value={pinInput}
+          onChange={(e) => setPinInput(e.target.value)}
+          placeholder="Enter PIN"
+          className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black"
+        />
+        <div className="flex gap-3">
+          <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">Unlock</button>
+          <button type="button" onClick={onCancel} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+);
 
-const NavButton: React.FC<NavButtonProps> = ({ active, icon, label, onClick }) => (
+const NavButton = ({ active, icon, label, onClick }: any) => (
   <button
     onClick={onClick}
     className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium whitespace-nowrap ${
-      active 
-        ? 'bg-indigo-50 text-indigo-700' 
-        : 'text-slate-600 hover:bg-slate-100'
+      active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'
     }`}
   >
     {icon}

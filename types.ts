@@ -1,11 +1,14 @@
 
-export interface Member {
+export interface Tournament {
   id: string;
   name: string;
+  createdAt: number;
+  status: 'active' | 'archived';
 }
 
 export interface Team {
   id: string;
+  tournamentId: string;
   name: string;
   members: string[];
 }
@@ -19,13 +22,14 @@ export interface GameScore {
 
 export interface Match {
   id: string;
+  tournamentId: string;
   team1Id: string;
   team2Id: string;
   status: MatchStatus;
   format: 1 | 3 | 5; // Best of
   pointsTarget: 15 | 21 | 30;
   currentGame: number;
-  scores: GameScore[]; // Array of scores for each game played
+  scores: GameScore[]; 
   winnerId?: string;
   createdAt: number;
 }

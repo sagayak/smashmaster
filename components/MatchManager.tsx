@@ -46,6 +46,12 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, onCreate, o
     setTeam2Id('');
   };
 
+  const handleDeleteMatch = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this match? All recorded scores for this tie-up will be lost.")) {
+      onDelete(id);
+    }
+  };
+
   const getTeamName = (id: string) => teams.find(t => t.id === id)?.name || 'Deleted Team';
 
   return (
@@ -266,7 +272,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, onCreate, o
             }`}>
               {isAdmin ? (
                 <button
-                  onClick={() => onDelete(match.id)}
+                  onClick={() => handleDeleteMatch(match.id)}
                   className="text-slate-400 hover:text-red-600 p-2 transition-colors rounded-lg hover:bg-red-50"
                   title="Delete Tie-up"
                 >

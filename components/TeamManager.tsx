@@ -34,6 +34,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, onAdd, onRemove, isAdm
     setMembers(updated);
   };
 
+  const handleDeleteTeam = (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete the team "${name}"? This will also remove them from the standings.`)) {
+      onRemove(id);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
@@ -194,7 +200,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, onAdd, onRemove, isAdm
               </div>
               {isAdmin && (
                 <button
-                  onClick={() => onRemove(team.id)}
+                  onClick={() => handleDeleteTeam(team.id, team.name)}
                   className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-red-50"
                 >
                   <Trash2 className="w-4 h-4" />
