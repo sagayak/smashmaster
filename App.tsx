@@ -46,9 +46,14 @@ const App: React.FC = () => {
 
   // Initial Tournaments Fetch
   const fetchTournaments = useCallback(async () => {
-    const list = await api.getTournaments();
-    setTournaments(list);
-    setLoading(false);
+    try {
+      const list = await api.getTournaments();
+      setTournaments(list);
+    } catch (err) {
+      console.error("Failed to fetch tournaments:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // Fetch Scoped Data
@@ -86,20 +91,33 @@ const App: React.FC = () => {
 
   // Tournament Handlers
   const handleCreateTournament = async (name: string) => {
-    const newTournament: Tournament = {
-      id: crypto.randomUUID(),
-      name,
-      createdAt: Date.now(),
-      status: 'active'
-    };
-    await api.saveTournament(newTournament);
-    await fetchTournaments();
+    setLoading(true);
+    try {
+      const newTournament: Tournament = {
+        id: crypto.randomUUID(),
+        name,
+        createdAt: Date.now(),
+        status: 'active'
+      };
+      await api.saveTournament(newTournament);
+      await fetchTournaments();
+    } catch (err) {
+      alert("Failed to create tournament. Please check your connection.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteTournament = async (id: string) => {
-    await api.deleteTournament(id);
-    await fetchTournaments();
-    if (selectedTournamentId === id) setSelectedTournamentId(null);
+    try {
+      await api.deleteTournament(id);
+      await fetchTournaments();
+      if (selectedTournamentId === id) setSelectedTournamentId(null);
+    } catch (err) {
+      alert("Failed to delete tournament.");
+      console.error(err);
+    }
   };
 
   // Auth Handlers
@@ -297,10 +315,10 @@ const App: React.FC = () => {
       )}
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
-        {loading && (
+        {(loading || (isRefreshing && !selectedTournamentId)) && (
           <div className="absolute inset-0 bg-slate-50/50 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pt-20">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-            <p className="text-slate-500 font-medium animate-pulse">Archiving/Syncing tournament data...</p>
+            <p className="text-slate-500 font-medium animate-pulse">Processing tournament data...</p>
           </div>
         )}
 
