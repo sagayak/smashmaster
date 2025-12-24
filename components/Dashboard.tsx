@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check } from 'lucide-react';
-import { Team, Match, StandingsEntry, ViewState } from '../types';
+import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus } from 'lucide-react';
+import { Team, Match, StandingsEntry, ViewState, Tournament } from '../types';
 
 interface DashboardProps {
   teams: Team[];
@@ -11,9 +11,10 @@ interface DashboardProps {
   onReset: () => void;
   isAdmin: boolean;
   onAdminLogin: () => void;
+  tournament?: Tournament;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin }) => {
+const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament }) => {
   const [copied, setCopied] = useState(false);
   const activeMatches = matches.filter(m => m.status === 'live');
 
@@ -27,16 +28,32 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Tournament Dashboard</h2>
-          <p className="text-slate-500 font-medium">Real-time badminton scoring & rankings</p>
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">{tournament?.name}</h2>
+            <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border border-indigo-100">
+              {tournament?.format}
+            </span>
+          </div>
+          <p className="text-slate-500 font-medium">Tournament Dashboard • Real-time scoring</p>
         </div>
-        <button 
-          onClick={handleShare}
-          className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition-all shadow-sm group"
-        >
-          {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />}
-          {copied ? 'Link Copied!' : 'Share Tournament'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleShare}
+            className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition-all shadow-sm group"
+          >
+            {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />}
+            {copied ? 'Link Copied!' : 'Share'}
+          </button>
+          {isAdmin && (
+            <button 
+              onClick={() => onNavigate('teams')}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+            >
+              <UserPlus className="w-4 h-4" />
+              Add Team
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -116,19 +133,19 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                 <Swords className="w-32 h-32 rotate-12" />
              </div>
              <h3 className="text-2xl font-black mb-2 tracking-tight">Tournament Actions</h3>
-             <p className="text-indigo-200 mb-8 font-medium max-w-xs">Organize your players and manage the bracket logic.</p>
+             <p className="text-indigo-200 mb-8 font-medium max-w-xs">Quickly manage your tournament structure.</p>
              <div className="flex flex-wrap gap-4 relative z-10">
                 <button 
                   onClick={() => onNavigate('teams')}
                   className="bg-white text-indigo-900 px-6 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-indigo-50 transition-all shadow-xl active:scale-95"
                 >
-                  <Users className="w-5 h-5" /> Manage Teams
+                  <Users className="w-5 h-5" /> Teams
                 </button>
                 <button 
                   onClick={() => onNavigate('matches')}
                   className="bg-indigo-700/50 backdrop-blur-md border border-indigo-500/50 text-white px-6 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-indigo-600 transition-all active:scale-95"
                 >
-                  <Swords className="w-5 h-5" /> Manual Tie-ups
+                  <Swords className="w-5 h-5" /> Matches
                 </button>
              </div>
           </section>

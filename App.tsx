@@ -47,6 +47,7 @@ const App: React.FC = () => {
   // Initial Tournaments Fetch
   const fetchTournaments = useCallback(async () => {
     try {
+      setLoading(true);
       const list = await api.getTournaments();
       setTournaments(list);
     } catch (err) {
@@ -90,20 +91,27 @@ const App: React.FC = () => {
   }, [selectedTournamentId, fetchData]);
 
   // Tournament Handlers
-  const handleCreateTournament = async (name: string) => {
+  const handleCreateTournament = async (name: string, format: 'League' | 'Knockout') => {
     setLoading(true);
     try {
       const newTournament: Tournament = {
         id: crypto.randomUUID(),
         name,
+        format,
         createdAt: Date.now(),
         status: 'active'
       };
+      
+      // Update UI state immediately for responsiveness
+      setTournaments(prev => [newTournament, ...prev]);
+      
       await api.saveTournament(newTournament);
+      // Re-fetch to confirm and sync with DB IDs if needed
       await fetchTournaments();
     } catch (err) {
       alert("Failed to create tournament. Please check your connection.");
       console.error(err);
+      fetchTournaments(); // Rollback local UI state on error
     } finally {
       setLoading(false);
     }
@@ -112,7 +120,7 @@ const App: React.FC = () => {
   const handleDeleteTournament = async (id: string) => {
     try {
       await api.deleteTournament(id);
-      await fetchTournaments();
+      setTournaments(prev => prev.filter(t => t.id !== id));
       if (selectedTournamentId === id) setSelectedTournamentId(null);
     } catch (err) {
       alert("Failed to delete tournament.");
@@ -263,7 +271,9 @@ const App: React.FC = () => {
                 </div>
                 <div className="hidden sm:block">
                   <h1 className="text-lg font-black text-slate-900 leading-tight">SmashMaster</h1>
-                  <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">{currentTournament?.name}</p>
+                  <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">
+                    {currentTournament?.name} ({currentTournament?.format})
+                  </p>
                 </div>
               </div>
               <button 
@@ -318,7 +328,7 @@ const App: React.FC = () => {
         {(loading || (isRefreshing && !selectedTournamentId)) && (
           <div className="absolute inset-0 bg-slate-50/50 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pt-20">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-            <p className="text-slate-500 font-medium animate-pulse">Processing tournament data...</p>
+            <p className="text-slate-500 font-medium animate-pulse">Syncing tournament data...</p>
           </div>
         )}
 
@@ -331,6 +341,7 @@ const App: React.FC = () => {
             onReset={() => setSelectedTournamentId(null)}
             isAdmin={isAdmin}
             onAdminLogin={triggerAdminLogin}
+            tournament={currentTournament}
           />
         )}
 

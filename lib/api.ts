@@ -10,21 +10,20 @@ const supabase = isCloudEnabled ? createClient(supabaseUrl, supabaseKey) : null;
 
 /**
  * Maps frontend camelCase objects to backend snake_case for Supabase.
- * Ensures that tournamentId correctly maps to tournament_id.
  */
 const toSnakeCasePayload = (obj: any) => {
   const snake: any = {};
   for (const key in obj) {
-    // Manual mapping for common fields to be 100% safe
+    // Manual mapping for tie-up (match) specific fields
     if (key === 'tournamentId') snake['tournament_id'] = obj[key];
     else if (key === 'team1Id') snake['team1_id'] = obj[key];
     else if (key === 'team2Id') snake['team2_id'] = obj[key];
-    else if (key === 'winnerId') snake['winner_id'] = obj[key];
+    else if (key === 'winnerId') snake['winner_id'] = obj[key] || null;
     else if (key === 'pointsTarget') snake['points_target'] = obj[key];
     else if (key === 'currentGame') snake['current_game'] = obj[key];
     else if (key === 'createdAt') snake['created_at'] = new Date(obj[key]).toISOString();
+    else if (key === 'scores') snake['scores'] = obj[key]; // JSONB handles array directly
     else {
-      // Automatic conversion for others (e.g., status -> status)
       const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
       snake[snakeKey] = obj[key];
     }
@@ -61,45 +60,32 @@ export const api = {
           .select('*')
           .order('created_at', { ascending: false });
         
-        if (error) {
-          console.error("Supabase error fetching tournaments:", error);
-          throw error;
-        }
+        if (error) throw error;
         return fromSnakeCase(data || []);
       }
     } catch (err) {
-      console.warn("Supabase fetch failed, falling back to LocalStorage:", err);
+      console.warn("Supabase fetch failed:", err);
     }
     const local = localStorage.getItem('smashmaster_tournaments');
     return local ? JSON.parse(local).sort((a: any, b: any) => b.createdAt - a.createdAt) : [];
   },
 
   async saveTournament(tournament: Tournament): Promise<void> {
-    try {
-      if (supabase) {
-        const payload = toSnakeCasePayload(tournament);
-        const { error } = await supabase.from('tournaments').insert([payload]);
-        if (error) {
-          console.error("Supabase error saving tournament:", error);
-          throw error;
-        }
-        return;
-      }
-    } catch (err) {
-      console.warn("Supabase save failed, using LocalStorage:", err);
+    if (supabase) {
+      const payload = toSnakeCasePayload(tournament);
+      const { error } = await supabase.from('tournaments').insert([payload]);
+      if (error) throw error;
+      return;
     }
-    const list = await this.getTournaments();
+    const list = JSON.parse(localStorage.getItem('smashmaster_tournaments') || '[]');
     localStorage.setItem('smashmaster_tournaments', JSON.stringify([tournament, ...list]));
   },
 
   async deleteTournament(id: string): Promise<void> {
-    try {
-      if (supabase) {
-        const { error } = await supabase.from('tournaments').delete().eq('id', id);
-        if (error) throw error;
-        return;
-      }
-    } catch (err) {}
+    if (supabase) {
+      await supabase.from('tournaments').delete().eq('id', id);
+      return;
+    }
     const list = await this.getTournaments();
     localStorage.setItem('smashmaster_tournaments', JSON.stringify(list.filter(t => t.id !== id)));
   },
@@ -122,7 +108,6 @@ export const api = {
     if (supabase) {
       const payload = toSnakeCasePayload(team);
       const { error } = await supabase.from('teams').insert([payload]);
-      if (error) console.error("Error saving team:", error);
       return;
     }
     const local = localStorage.getItem('smashmaster_teams');
@@ -147,7 +132,11 @@ export const api = {
         .select('*')
         .eq('tournament_id', tournamentId)
         .order('created_at', { ascending: false });
-      if (error) return [];
+      
+      if (error) {
+        console.error("Error fetching tie-ups:", error);
+        return [];
+      }
       return fromSnakeCase(data || []);
     }
     const local = localStorage.getItem('smashmaster_matches');
@@ -159,6 +148,7 @@ export const api = {
     if (supabase) {
       const payload = toSnakeCasePayload(match);
       const { error } = await supabase.from('matches').insert([payload]);
+      if (error) console.error("Error saving tie-up:", error);
       return;
     }
     const local = localStorage.getItem('smashmaster_matches');
@@ -170,6 +160,7 @@ export const api = {
     if (supabase) {
       const payload = toSnakeCasePayload(match);
       const { error } = await supabase.from('matches').update(payload).eq('id', match.id);
+      if (error) console.error("Error updating tie-up:", error);
       return;
     }
     const local = localStorage.getItem('smashmaster_matches');

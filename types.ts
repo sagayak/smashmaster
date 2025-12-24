@@ -2,6 +2,7 @@
 export interface Tournament {
   id: string;
   name: string;
+  format: 'League' | 'Knockout';
   createdAt: number;
   status: 'active' | 'archived';
 }

@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
-import { Plus, Trophy, Calendar, Trash2, ArrowRight, Lock, Archive, LayoutGrid } from 'lucide-react';
+import { Plus, Trophy, Calendar, Trash2, ArrowRight, Lock, Archive, LayoutGrid, Info } from 'lucide-react';
 import { Tournament } from '../types';
 
 interface TournamentSelectorProps {
   tournaments: Tournament[];
   onSelect: (id: string) => void;
-  onCreate: (name: string) => void;
+  onCreate: (name: string, format: 'League' | 'Knockout') => void;
   onDelete: (id: string) => void;
   isAdmin: boolean;
   onAdminLogin: () => void;
@@ -17,11 +17,12 @@ const TournamentSelector: React.FC<TournamentSelectorProps> = ({
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
+  const [format, setFormat] = useState<'League' | 'Knockout'>('League');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onCreate(name.trim());
+      onCreate(name.trim(), format);
       setName('');
       setIsAdding(false);
     }
@@ -59,20 +60,54 @@ const TournamentSelector: React.FC<TournamentSelectorProps> = ({
       </div>
 
       {isAdding && (
-        <div className="bg-white border-2 border-indigo-100 rounded-2xl p-6 mb-8 shadow-xl animate-in zoom-in-95 duration-200">
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
-            <input 
-              autoFocus
-              required
-              type="text"
-              placeholder="Tournament Name (e.g. Summer Smash 2024)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="flex-1 px-5 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-medium"
-            />
-            <div className="flex gap-2">
-              <button type="submit" className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700">Create</button>
-              <button type="button" onClick={() => setIsAdding(false)} className="bg-slate-100 text-slate-600 px-6 py-3 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
+        <div className="bg-white border-2 border-indigo-100 rounded-3xl p-8 mb-8 shadow-2xl animate-in zoom-in-95 duration-200">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-black text-slate-700 uppercase tracking-widest mb-2">Tournament Name</label>
+                <input 
+                  autoFocus
+                  required
+                  type="text"
+                  placeholder="e.g. Summer Smash 2024"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-5 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-medium text-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-black text-slate-700 uppercase tracking-widest mb-2">Tournament Format</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormat('League')}
+                    className={`px-4 py-3 rounded-xl font-bold border-2 transition-all ${
+                      format === 'League' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    League (Table)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormat('Knockout')}
+                    className={`px-4 py-3 rounded-xl font-bold border-2 transition-all ${
+                      format === 'Knockout' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Knockout (Bracket)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-slate-400 text-xs bg-slate-50 p-3 rounded-xl">
+               <Info className="w-4 h-4 text-indigo-500" />
+               League format ranks teams by wins and point difference. Knockout support coming soon.
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button type="button" onClick={() => setIsAdding(false)} className="bg-slate-100 text-slate-600 px-8 py-3 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
+              <button type="submit" className="bg-indigo-600 text-white px-10 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100">Create Tournament</button>
             </div>
           </form>
         </div>
@@ -104,9 +139,14 @@ const TournamentSelector: React.FC<TournamentSelectorProps> = ({
                 )}
               </div>
               <h3 className="text-xl font-black text-slate-900 mb-2 leading-tight">{t.name}</h3>
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
-                <Calendar className="w-3.5 h-3.5" />
-                {new Date(t.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-500 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider border border-slate-100">
+                  <Calendar className="w-3 h-3" />
+                  {new Date(t.createdAt).toLocaleDateString()}
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider border border-indigo-100">
+                  {t.format || 'League'}
+                </span>
               </div>
             </div>
 
