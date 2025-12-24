@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Match, Team, GameScore, MatchStatus } from '../types';
-import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle } from 'lucide-react';
+import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck } from 'lucide-react';
 
 interface MatchScorerProps {
   match: Match;
@@ -108,6 +108,14 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
         </button>
         
         <div className="flex flex-col items-center">
+          {match.umpireNames && match.umpireNames.length > 0 && (
+            <div className="flex items-center gap-1.5 mb-1 px-3 py-0.5 bg-slate-100 rounded-full border border-slate-200">
+              <UserCheck className="w-3 h-3 text-emerald-600" />
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                Umpire: {match.umpireNames.join(", ")}
+              </span>
+            </div>
+          )}
           <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-1">
              Game {match.scores.length + 1} • {match.pointsTarget} Pts
           </span>

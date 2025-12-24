@@ -38,9 +38,17 @@ const toSnakeCasePayload = (obj: any) => {
   if (Object.prototype.hasOwnProperty.call(obj, 'currentGame')) {
     snake.current_game = safeInt(obj.currentGame, 0);
   }
+
+  if (Object.prototype.hasOwnProperty.call(obj, 'order')) {
+    snake.order_index = safeInt(obj.order, 1);
+  }
   
   if (obj.scores) {
     snake.scores = Array.isArray(obj.scores) ? obj.scores : [];
+  }
+
+  if (obj.umpireNames) {
+    snake.umpire_names = Array.isArray(obj.umpireNames) ? obj.umpireNames : [];
   }
   
   if (obj.createdAt) {
@@ -96,6 +104,8 @@ const fromSnakeCase = (data: any[]): any[] => {
         format: item.format,
         pointsTarget: item.points_target ?? 21,
         currentGame: item.current_game ?? 0,
+        order: item.order_index ?? 1,
+        umpireNames: item.umpire_names || [],
         scores: Array.isArray(scores) ? scores : [],
       } as Match;
     }
@@ -187,13 +197,13 @@ export const api = {
 
   async getMatches(tournamentId: string): Promise<Match[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('matches').select('*').eq('tournament_id', tournamentId).order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('matches').select('*').eq('tournament_id', tournamentId).order('order_index', { ascending: true });
       if (error) return [];
       return fromSnakeCase(data || []);
     }
     const local = localStorage.getItem('smashmaster_matches');
     const all = local ? JSON.parse(local) : [];
-    return all.filter((m: Match) => m.tournamentId === tournamentId).sort((a: any, b: any) => b.createdAt - a.createdAt);
+    return all.filter((m: Match) => m.tournamentId === tournamentId).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
   },
 
   async saveMatch(match: Match): Promise<void> {

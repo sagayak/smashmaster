@@ -5,13 +5,14 @@ import { Team } from '../types';
 
 interface TeamManagerProps {
   teams: Team[];
+  tournamentId: string;
   onAdd: (team: Team) => void;
   onRemove: (id: string) => void;
   isAdmin: boolean;
   onAdminLogin: () => void;
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ teams, onAdd, onRemove, isAdmin, onAdminLogin }) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, onRemove, isAdmin, onAdminLogin }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [members, setMembers] = useState<string[]>(['', '', '']); // Default 3 members
@@ -51,8 +52,10 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, onAdd, onRemove, isAdm
       return;
     }
 
+    // Fixed: Added tournamentId to team object
     onAdd({
       id: crypto.randomUUID(),
+      tournamentId,
       name: newTeamName,
       members: validMembers
     });

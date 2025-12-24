@@ -1,12 +1,14 @@
 
 import React, { useState } from 'react';
-import { Plus, Swords, Play, Trash2, Calendar, Trophy, Zap, Activity, Lock, Edit3 } from 'lucide-react';
+import { Plus, Swords, Play, Trash2, Calendar, Trophy, Zap, Activity, Lock, Edit3, Hash } from 'lucide-react';
 import { Team, Match } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
+import { api } from '../lib/api';
 
 interface MatchManagerProps {
   teams: Team[];
   matches: Match[];
+  tournamentId: string;
   onCreate: (match: Match) => void;
   onDelete: (id: string) => void;
   onStart: (id: string) => void;
@@ -14,12 +16,18 @@ interface MatchManagerProps {
   onAdminLogin: () => void;
 }
 
-const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, onCreate, onDelete, onStart, isAdmin, onAdminLogin }) => {
+const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentId, onCreate, onDelete, onStart, isAdmin, onAdminLogin }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [team1Id, setTeam1Id] = useState('');
   const [team2Id, setTeam2Id] = useState('');
   const [format, setFormat] = useState<1 | 3 | 5>(3);
   const [pointsTarget, setPointsTarget] = useState<15 | 21 | 30>(21);
+
+  // Sorting matches by order primarily
+  const sortedMatches = [...matches].sort((a, b) => {
+    if (a.order !== b.order) return a.order - b.order;
+    return b.createdAt - a.createdAt;
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +37,15 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, onCreate, o
       return;
     }
 
+    // Calculate next order number
+    const nextOrder = matches.length > 0 
+      ? Math.max(...matches.map(m => m.order || 0)) + 1 
+      : 1;
+
+    // Fixed: Added tournamentId to match object
     onCreate({
       id: crypto.randomUUID(),
+      tournamentId,
       team1Id,
       team2Id,
       status: 'scheduled',
@@ -38,12 +53,22 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, onCreate, o
       pointsTarget,
       currentGame: 0,
       scores: [],
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      order: nextOrder
     });
 
     setIsCreating(false);
     setTeam1Id('');
     setTeam2Id('');
+  };
+
+  const handleUpdateOrder = async (matchId: string, newOrder: number) => {
+    const match = matches.find(m => m.id === matchId);
+    if (match && isAdmin) {
+      const updatedMatch = { ...match, order: newOrder };
+      await api.updateMatch(updatedMatch);
+      // Note: Parental state update triggered by realtime subscription in App.tsx
+    }
   };
 
   const handleDeleteMatch = (id: string) => {
@@ -181,7 +206,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, onCreate, o
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {matches.length === 0 && !isCreating && (
+        {sortedMatches.length === 0 && !isCreating && (
           <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200 shadow-sm">
             <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No matches scheduled yet.</p>
@@ -193,7 +218,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, onCreate, o
           </div>
         )}
 
-        {matches.map((match) => (
+        {sortedMatches.map((match) => (
           <div 
             key={match.id} 
             className={`relative bg-white border rounded-2xl overflow-hidden transition-all duration-300 ${
@@ -209,6 +234,19 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, onCreate, o
             <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-slate-900 text-white px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest mr-1">
+                     <Hash className="w-3 h-3" />
+                     {isAdmin ? (
+                       <input 
+                        type="number" 
+                        value={match.order} 
+                        onChange={(e) => handleUpdateOrder(match.id, parseInt(e.target.value) || 0)}
+                        className="bg-transparent w-8 outline-none border-none focus:ring-0 text-center"
+                       />
+                     ) : (
+                       <span>{match.order}</span>
+                     )}
+                  </div>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
                     match.status === 'completed' ? 'bg-slate-100 text-slate-600' :
                     match.status === 'live' ? 'bg-red-600 text-white shadow-sm' :

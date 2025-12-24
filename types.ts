@@ -34,6 +34,8 @@ export interface Match {
   scores: GameScore[]; 
   winnerId?: string;
   createdAt: number;
+  order: number; // For sequencing matches
+  umpireNames?: string[]; // New field for match officials
 }
 
 export interface StandingsEntry {

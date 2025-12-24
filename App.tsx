@@ -18,7 +18,9 @@ import {
   Loader2,
   RefreshCw,
   LayoutGrid,
-  ShieldCheck
+  ShieldCheck,
+  UserCheck,
+  X
 } from 'lucide-react';
 import { Team, Match, ViewState, StandingsEntry, GameScore, Tournament } from './types';
 import TeamManager from './components/TeamManager';
@@ -44,7 +46,9 @@ const App: React.FC = () => {
   const [isScorer, setIsScorer] = useState<boolean>(false);
   const [showPinModal, setShowPinModal] = useState<boolean>(false);
   const [showScorerModal, setShowScorerModal] = useState<boolean>(false);
+  const [showUmpireModal, setShowUmpireModal] = useState<boolean>(false);
   const [pinInput, setPinInput] = useState<string>("");
+  const [umpireInput, setUmpireInput] = useState<string[]>([""]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchTournaments = useCallback(async () => {
@@ -155,11 +159,28 @@ const App: React.FC = () => {
       sessionStorage.setItem('smashmaster_scorer', 'true');
       setShowScorerModal(false);
       setPinInput("");
-      if (activeMatchId) setView('scorer');
+      
+      // If we were trying to start a match, show umpire modal now
+      if (activeMatchId) setShowUmpireModal(true);
     } else {
       alert("Incorrect Scorer Passcode");
       setPinInput("");
     }
+  };
+
+  const handleUmpireSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const match = matches.find(m => m.id === activeMatchId);
+    if (!match) return;
+
+    const umpires = umpireInput.filter(u => u.trim() !== "");
+    const updatedMatch: Match = { ...match, umpireNames: umpires };
+    
+    await api.updateMatch(updatedMatch);
+    setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
+    
+    setShowUmpireModal(false);
+    setView('scorer');
   };
 
   const handleLogout = () => {
@@ -170,9 +191,18 @@ const App: React.FC = () => {
   };
 
   const handleStartMatchRequested = (id: string) => {
+    const match = matches.find(m => m.id === id);
     setActiveMatchId(id);
+    
+    // Pre-fill existing umpires if any
+    if (match?.umpireNames && match.umpireNames.length > 0) {
+      setUmpireInput(match.umpireNames);
+    } else {
+      setUmpireInput([""]);
+    }
+
     if (isAdmin || isScorer) {
-      setView('scorer');
+      setShowUmpireModal(true);
     } else {
       setShowScorerModal(true);
     }
@@ -295,6 +325,61 @@ const App: React.FC = () => {
 
       {showPinModal && <PinModal title="Admin Authentication" pinInput={pinInput} setPinInput={setPinInput} onSubmit={handlePinSubmit} onCancel={() => setShowPinModal(false)} />}
       {showScorerModal && <PinModal title="Scorer Authentication" description="Enter the match access code to start scoring." pinInput={pinInput} setPinInput={setPinInput} onSubmit={handleScorerSubmit} onCancel={() => setShowScorerModal(false)} />}
+      
+      {showUmpireModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="bg-emerald-100 p-3 rounded-full mb-4">
+                <UserCheck className="w-6 h-6 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Match Officials</h3>
+              <p className="text-slate-500 text-sm mt-1">Identify the umpires for this tie-up.</p>
+            </div>
+            <form onSubmit={handleUmpireSubmit} className="space-y-4">
+              <div className="space-y-2">
+                {umpireInput.map((val, i) => (
+                  <div key={i} className="relative">
+                    <input 
+                      type="text" 
+                      value={val} 
+                      onChange={(e) => {
+                        const next = [...umpireInput];
+                        next[i] = e.target.value;
+                        setUmpireInput(next);
+                      }} 
+                      placeholder={`Umpire Name ${i+1}`}
+                      className="w-full px-4 py-2 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-bold"
+                    />
+                    {umpireInput.length > 1 && (
+                      <button 
+                        type="button" 
+                        onClick={() => setUmpireInput(umpireInput.filter((_, idx) => idx !== i))}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {umpireInput.length < 3 && (
+                  <button 
+                    type="button" 
+                    onClick={() => setUmpireInput([...umpireInput, ""])}
+                    className="text-indigo-600 text-xs font-bold uppercase tracking-wider flex items-center gap-1 hover:underline"
+                  >
+                    + Add Another Umpire
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">Go to Court</button>
+                <button type="button" onClick={() => setShowUmpireModal(false)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200">Skip</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
         {(loading || isRefreshing) && (
@@ -311,13 +396,14 @@ const App: React.FC = () => {
             onUpdateTournament={handleUpdateTournament}
           />
         )}
-        {view === 'teams' && <TeamManager teams={teams} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam({...t, tournamentId: selectedTournamentId!}); fetchData(); }} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
-        {view === 'matches' && <MatchManager teams={teams} matches={matches} onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch({...m, tournamentId: selectedTournamentId!}); fetchData(); setView('matches'); }} onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} onStart={handleStartMatchRequested} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'teams' && <TeamManager teams={teams} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'matches' && <MatchManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); setView('matches'); }} onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} onStart={handleStartMatchRequested} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
         {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={async (m) => { await api.updateMatch(m); fetchData(); }} onFinish={() => setView('matches')} />}
         {view === 'standings' && (
           <Standings standings={standings} top4={top4} isAdmin={isAdmin} onAddTieUp={(t1, t2) => {
             if(!isAdmin) return setShowPinModal(true);
-            const nm: Match = { id: crypto.randomUUID(), tournamentId: selectedTournamentId!, team1Id: t1, team2Id: t2, status: 'scheduled', format: 3, pointsTarget: 21, currentGame: 0, scores: [], createdAt: Date.now() };
+            const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;
+            const nm: Match = { id: crypto.randomUUID(), tournamentId: selectedTournamentId!, team1Id: t1, team2Id: t2, status: 'scheduled', format: 3, pointsTarget: 21, currentGame: 0, scores: [], createdAt: Date.now(), order: nextOrder };
             api.saveMatch(nm).then(() => fetchData());
           }} />
         )}
