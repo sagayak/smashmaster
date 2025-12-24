@@ -50,7 +50,7 @@ const App: React.FC = () => {
       setLoading(true);
       const list = await api.getTournaments();
       setTournaments(list);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch tournaments:", err);
     } finally {
       setLoading(false);
@@ -69,7 +69,8 @@ const App: React.FC = () => {
       setTeams(t);
       setMatches(m);
       setLastSaved(new Date().toLocaleTimeString());
-    } catch (err) {
+      console.log(`Fetched ${m.length} matches and ${t.length} teams.`);
+    } catch (err: any) {
       console.error("Failed to fetch data:", err);
     } finally {
       setIsRefreshing(false);
@@ -102,16 +103,12 @@ const App: React.FC = () => {
         status: 'active'
       };
       
-      // Update UI state immediately for responsiveness
       setTournaments(prev => [newTournament, ...prev]);
-      
       await api.saveTournament(newTournament);
-      // Re-fetch to confirm and sync with DB IDs if needed
       await fetchTournaments();
-    } catch (err) {
-      alert("Failed to create tournament. Please check your connection.");
-      console.error(err);
-      fetchTournaments(); // Rollback local UI state on error
+    } catch (err: any) {
+      alert(`Error creating tournament: ${err.message || 'Check connection'}`);
+      fetchTournaments();
     } finally {
       setLoading(false);
     }
@@ -122,9 +119,8 @@ const App: React.FC = () => {
       await api.deleteTournament(id);
       setTournaments(prev => prev.filter(t => t.id !== id));
       if (selectedTournamentId === id) setSelectedTournamentId(null);
-    } catch (err) {
-      alert("Failed to delete tournament.");
-      console.error(err);
+    } catch (err: any) {
+      alert(`Error deleting tournament: ${err.message}`);
     }
   };
 
@@ -153,28 +149,48 @@ const App: React.FC = () => {
   const addTeam = async (team: Team) => {
     if (!isAdmin) return triggerAdminLogin();
     const newTeam = { ...team, tournamentId: selectedTournamentId! };
-    await api.saveTeam(newTeam);
-    await fetchData();
+    try {
+      await api.saveTeam(newTeam);
+      await fetchData();
+    } catch (err: any) {
+      alert(`Failed to save team: ${err.message}`);
+    }
   };
 
   const removeTeam = async (id: string) => {
     if (!isAdmin) return triggerAdminLogin();
-    await api.deleteTeam(id);
-    await fetchData();
+    try {
+      await api.deleteTeam(id);
+      await fetchData();
+    } catch (err: any) {
+      alert(`Failed to delete team: ${err.message}`);
+    }
   };
   
   const createMatch = async (match: Match) => {
     if (!isAdmin) return triggerAdminLogin();
     const newMatch = { ...match, tournamentId: selectedTournamentId! };
-    await api.saveMatch(newMatch);
-    await fetchData();
-    setView('matches');
+    try {
+      // Optimistic update
+      setMatches(prev => [newMatch, ...prev]);
+      await api.saveMatch(newMatch);
+      await fetchData();
+      setView('matches');
+    } catch (err: any) {
+      alert(`Error saving match: ${err.message || 'Check your database columns'}`);
+      console.error(err);
+      fetchData(); // Rollback
+    }
   };
 
   const deleteMatch = async (id: string) => {
     if (!isAdmin) return triggerAdminLogin();
-    await api.deleteMatch(id);
-    await fetchData();
+    try {
+      await api.deleteMatch(id);
+      await fetchData();
+    } catch (err: any) {
+      alert(`Error deleting match: ${err.message}`);
+    }
   };
 
   const startMatch = (id: string) => {
@@ -183,8 +199,12 @@ const App: React.FC = () => {
   };
 
   const updateMatch = async (updatedMatch: Match) => {
-    await api.updateMatch(updatedMatch);
-    await fetchData();
+    try {
+      await api.updateMatch(updatedMatch);
+      await fetchData();
+    } catch (err: any) {
+      alert(`Error updating score: ${err.message}`);
+    }
   };
 
   const calculateStandings = useCallback((): StandingsEntry[] => {
@@ -213,10 +233,10 @@ const App: React.FC = () => {
         t1.losses += 1;
       }
       match.scores.forEach(game => {
-        t1.pointsFor += game.team1;
-        t1.pointsAgainst += game.team2;
-        t2.pointsFor += game.team2;
-        t2.pointsAgainst += game.team1;
+        t1.pointsFor += (game.team1 || 0);
+        t1.pointsAgainst += (game.team2 || 0);
+        t2.pointsFor += (game.team2 || 0);
+        t2.pointsAgainst += (game.team1 || 0);
       });
     });
 
