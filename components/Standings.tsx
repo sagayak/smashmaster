@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Trophy, ArrowUpRight, Medal, Swords, Info, Star, Lock } from 'lucide-react';
+import { Trophy, ArrowUpRight, Medal, Swords, Info, Star, Lock, Zap, ChevronRight } from 'lucide-react';
 import { StandingsEntry } from '../types';
 
 interface StandingsProps {
@@ -25,6 +25,11 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
     }
   };
 
+  const handleQuickMatch = (idx1: number, idx2: number) => {
+    if (!isAdmin || !top4[idx1] || !top4[idx2]) return;
+    onAddTieUp(top4[idx1].teamId, top4[idx2].teamId);
+  };
+
   return (
     <div className="space-y-8 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -37,55 +42,91 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
           isAdmin ? (
             <button 
               onClick={() => setShowPlayoffPicker(!showPlayoffPicker)}
-              className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-black transition-colors shadow-lg active:scale-95"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all shadow-lg active:scale-95 ${
+                showPlayoffPicker ? 'bg-slate-200 text-slate-700' : 'bg-slate-900 text-white hover:bg-black'
+              }`}
             >
               <Swords className="w-5 h-5" />
-              Schedule Top 4 Match
+              {showPlayoffPicker ? 'Close Playoff Panel' : 'Schedule Playoff Match'}
             </button>
           ) : (
             <div className="flex items-center gap-2 text-slate-400 bg-slate-100 px-4 py-2 rounded-lg font-bold text-sm">
               <Lock className="w-4 h-4" />
-              Admin Tie-up Only
+              Admin Playoff Tools
             </div>
           )
         )}
       </div>
 
       {showPlayoffPicker && isAdmin && (
-        <div className="bg-indigo-600 rounded-2xl p-6 text-white shadow-xl animate-in slide-in-from-top-4">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <Swords className="w-5 h-5" />
-            Schedule Semi-Finals / Finals
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <div>
-              <label className="block text-xs font-bold uppercase mb-1 text-indigo-100">Team A (From Top 4)</label>
-              <select 
-                value={selectedT1}
-                onChange={(e) => setSelectedT1(e.target.value)}
-                className="w-full bg-indigo-700 border-none rounded-lg p-2 focus:ring-2 focus:ring-white outline-none"
-              >
-                <option value="">Select Team</option>
-                {top4.map(t => <option key={t.teamId} value={t.teamId}>{t.teamName}</option>)}
-              </select>
+        <div className="bg-white border-2 border-indigo-600 rounded-3xl p-6 shadow-2xl animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-indigo-600 p-2 rounded-xl">
+              <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase mb-1 text-indigo-100">Team B (From Top 4)</label>
-              <select 
-                value={selectedT2}
-                onChange={(e) => setSelectedT2(e.target.value)}
-                className="w-full bg-indigo-700 border-none rounded-lg p-2 focus:ring-2 focus:ring-white outline-none"
-              >
-                <option value="">Select Team</option>
-                {top4.map(t => <option key={t.teamId} value={t.teamId}>{t.teamName}</option>)}
-              </select>
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Playoff Generator</h3>
+              <p className="text-sm text-slate-500">Quickly schedule matches between the top contenders.</p>
             </div>
-            <button 
-              onClick={handleCreatePlayoff}
-              className="bg-white text-indigo-600 py-2 rounded-lg font-black uppercase tracking-wider hover:bg-indigo-50 transition-colors shadow-lg"
-            >
-              Create Match
-            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Quick Actions */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Standard Pairings</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <QuickMatchButton 
+                  label="Semi 1 (1st vs 4th)" 
+                  onClick={() => handleQuickMatch(0, 3)} 
+                  disabled={top4.length < 4}
+                />
+                <QuickMatchButton 
+                  label="Semi 2 (2nd vs 3rd)" 
+                  onClick={() => handleQuickMatch(1, 2)} 
+                  disabled={top4.length < 3}
+                />
+                <QuickMatchButton 
+                  label="Finals (1st vs 2nd)" 
+                  onClick={() => handleQuickMatch(0, 1)} 
+                  disabled={top4.length < 2}
+                  highlight
+                />
+              </div>
+            </div>
+
+            {/* Custom Picker */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Custom Matchup</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div className="sm:col-span-1">
+                  <select 
+                    value={selectedT1}
+                    onChange={(e) => setSelectedT1(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all appearance-none"
+                  >
+                    <option value="">Team A</option>
+                    {top4.map((t, i) => <option key={t.teamId} value={t.teamId}>Rank {i+1}: {t.teamName}</option>)}
+                  </select>
+                </div>
+                <div className="sm:col-span-1">
+                  <select 
+                    value={selectedT2}
+                    onChange={(e) => setSelectedT2(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all appearance-none"
+                  >
+                    <option value="">Team B</option>
+                    {top4.map((t, i) => <option key={t.teamId} value={t.teamId}>Rank {i+1}: {t.teamName}</option>)}
+                  </select>
+                </div>
+                <button 
+                  onClick={handleCreatePlayoff}
+                  disabled={!selectedT1 || !selectedT2 || selectedT1 === selectedT2}
+                  className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-black uppercase tracking-wider hover:bg-indigo-700 transition-colors shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  Create Match
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -181,8 +222,8 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {top4.length > 0 ? top4.map((t, idx) => (
-            <div key={t.teamId} className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-center text-center">
-              <span className="text-4xl font-black text-white/5 mb-2 leading-none">0{idx + 1}</span>
+            <div key={t.teamId} className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-center text-center group hover:bg-white/10 transition-all">
+              <span className="text-4xl font-black text-white/5 mb-2 leading-none group-hover:text-indigo-500/10 transition-colors">0{idx + 1}</span>
               <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center font-bold text-xl mb-3 shadow-lg shadow-indigo-900/50">
                 {t.teamName.charAt(0)}
               </div>
@@ -199,5 +240,22 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
     </div>
   );
 };
+
+const QuickMatchButton = ({ label, onClick, disabled, highlight }: { label: string, onClick: () => void, disabled: boolean, highlight?: boolean }) => (
+  <button 
+    onClick={onClick}
+    disabled={disabled}
+    className={`group flex items-center justify-between w-full px-4 py-3 rounded-2xl font-bold text-sm transition-all border-2 active:scale-[0.98] ${
+      disabled 
+        ? 'bg-slate-50 border-slate-100 text-slate-300 opacity-50' 
+        : highlight
+          ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300'
+          : 'bg-white border-slate-100 text-slate-700 hover:border-indigo-200 hover:bg-slate-50'
+    }`}
+  >
+    <span>{label}</span>
+    <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${disabled ? 'text-slate-200' : 'text-indigo-400'}`} />
+  </button>
+);
 
 export default Standings;

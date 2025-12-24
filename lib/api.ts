@@ -10,32 +10,27 @@ const supabase = isCloudEnabled ? createClient(supabaseUrl, supabaseKey) : null;
 
 /**
  * Maps frontend camelCase objects to backend snake_case for Supabase.
- * Strictly defines keys and validates numbers to prevent DB constraint errors.
  */
 const toSnakeCasePayload = (obj: any) => {
   const snake: any = {};
   
-  // Basic Fields
   if (obj.id) snake.id = obj.id;
   if (obj.name) snake.name = obj.name;
   if (obj.format) snake.format = obj.format;
   if (obj.status) snake.status = obj.status;
   if (obj.members) snake.members = obj.members;
+  if (obj.matchPasscode) snake.match_passcode = obj.matchPasscode;
   
-  // Relationship IDs
   if (obj.tournamentId) snake.tournament_id = obj.tournamentId;
   if (obj.team1Id) snake.team1_id = obj.team1Id;
   if (obj.team2Id) snake.team2_id = obj.team2Id;
   if (obj.winnerId !== undefined) snake.winner_id = obj.winnerId || null;
 
-  // Numeric Fields - Ensure they are valid integers and never NaN/Null
   const safeInt = (val: any, fallback: number = 0) => {
     const num = parseInt(val, 10);
     return isNaN(num) ? fallback : num;
   };
 
-  // Explicitly map match-specific scoring fields
-  // We check for property existence because updates might be partial
   if (Object.prototype.hasOwnProperty.call(obj, 'pointsTarget')) {
     snake.points_target = safeInt(obj.pointsTarget, 21);
   }
@@ -75,6 +70,7 @@ const fromSnakeCase = (data: any[]): any[] => {
       return {
         ...base,
         format: item.format,
+        matchPasscode: item.match_passcode || '0000'
       } as Tournament;
     }
 
@@ -112,10 +108,7 @@ export const api = {
   async getTournaments(): Promise<Tournament[]> {
     try {
       if (supabase) {
-        const { data, error } = await supabase
-          .from('tournaments')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('tournaments').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         return fromSnakeCase(data || []);
       }
@@ -137,6 +130,18 @@ export const api = {
     localStorage.setItem('smashmaster_tournaments', JSON.stringify([tournament, ...list]));
   },
 
+  async updateTournament(tournament: Tournament): Promise<void> {
+    if (supabase) {
+      const payload = toSnakeCasePayload(tournament);
+      const { error } = await supabase.from('tournaments').update(payload).eq('id', tournament.id);
+      if (error) throw error;
+      return;
+    }
+    const local = localStorage.getItem('smashmaster_tournaments');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_tournaments', JSON.stringify(all.map((t: any) => t.id === tournament.id ? tournament : t)));
+  },
+
   async deleteTournament(id: string): Promise<void> {
     if (supabase) {
       const { error } = await supabase.from('tournaments').delete().eq('id', id);
@@ -149,10 +154,7 @@ export const api = {
 
   async getTeams(tournamentId: string): Promise<Team[]> {
     if (supabase) {
-      const { data, error } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('tournament_id', tournamentId);
+      const { data, error } = await supabase.from('teams').select('*').eq('tournament_id', tournamentId);
       if (error) return [];
       return fromSnakeCase(data || []);
     }
@@ -185,11 +187,7 @@ export const api = {
 
   async getMatches(tournamentId: string): Promise<Match[]> {
     if (supabase) {
-      const { data, error } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('matches').select('*').eq('tournament_id', tournamentId).order('created_at', { ascending: false });
       if (error) return [];
       return fromSnakeCase(data || []);
     }
@@ -214,10 +212,7 @@ export const api = {
     if (supabase) {
       const payload = toSnakeCasePayload(match);
       const { error } = await supabase.from('matches').update(payload).eq('id', match.id);
-      if (error) {
-        console.error("Payload update failed:", payload);
-        throw error;
-      }
+      if (error) throw error;
       return;
     }
     const local = localStorage.getItem('smashmaster_matches');

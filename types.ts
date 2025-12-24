@@ -5,6 +5,7 @@ export interface Tournament {
   format: 'League' | 'Knockout';
   createdAt: number;
   status: 'active' | 'archived';
+  matchPasscode?: string; // New field for scorer access
 }
 
 export interface Team {

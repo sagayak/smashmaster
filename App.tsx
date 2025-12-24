@@ -17,7 +17,8 @@ import {
   Unlock,
   Loader2,
   RefreshCw,
-  LayoutGrid
+  LayoutGrid,
+  ShieldCheck
 } from 'lucide-react';
 import { Team, Match, ViewState, StandingsEntry, GameScore, Tournament } from './types';
 import TeamManager from './components/TeamManager';
@@ -40,11 +41,12 @@ const App: React.FC = () => {
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<string>(new Date().toLocaleTimeString());
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isScorer, setIsScorer] = useState<boolean>(false);
   const [showPinModal, setShowPinModal] = useState<boolean>(false);
+  const [showScorerModal, setShowScorerModal] = useState<boolean>(false);
   const [pinInput, setPinInput] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Initial Tournaments Fetch
   const fetchTournaments = useCallback(async () => {
     try {
       setLoading(true);
@@ -57,7 +59,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Fetch Scoped Data
   const fetchData = useCallback(async (isManual = false) => {
     if (!selectedTournamentId) return;
     if (isManual) setIsRefreshing(true);
@@ -69,7 +70,6 @@ const App: React.FC = () => {
       setTeams(t);
       setMatches(m);
       setLastSaved(new Date().toLocaleTimeString());
-      console.log(`Fetched ${m.length} matches and ${t.length} teams.`);
     } catch (err: any) {
       console.error("Failed to fetch data:", err);
     } finally {
@@ -80,7 +80,9 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchTournaments();
     const adminStatus = sessionStorage.getItem('smashmaster_admin');
+    const scorerStatus = sessionStorage.getItem('smashmaster_scorer');
     if (adminStatus === 'true') setIsAdmin(true);
+    if (scorerStatus === 'true') setIsScorer(true);
   }, [fetchTournaments]);
 
   useEffect(() => {
@@ -91,7 +93,6 @@ const App: React.FC = () => {
     }
   }, [selectedTournamentId, fetchData]);
 
-  // Tournament Handlers
   const handleCreateTournament = async (name: string, format: 'League' | 'Knockout') => {
     setLoading(true);
     try {
@@ -100,17 +101,26 @@ const App: React.FC = () => {
         name,
         format,
         createdAt: Date.now(),
-        status: 'active'
+        status: 'active',
+        matchPasscode: '0000'
       };
-      
       setTournaments(prev => [newTournament, ...prev]);
       await api.saveTournament(newTournament);
       await fetchTournaments();
     } catch (err: any) {
-      alert(`Error creating tournament: ${err.message || 'Check connection'}`);
+      alert(`Error creating tournament: ${err.message}`);
       fetchTournaments();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateTournament = async (updated: Tournament) => {
+    try {
+      await api.updateTournament(updated);
+      setTournaments(prev => prev.map(t => t.id === updated.id ? updated : t));
+    } catch (err: any) {
+      alert(`Error updating tournament: ${err.message}`);
     }
   };
 
@@ -124,7 +134,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Auth Handlers
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput === ADMIN_PIN) {
@@ -133,77 +142,39 @@ const App: React.FC = () => {
       setShowPinModal(false);
       setPinInput("");
     } else {
-      alert("Incorrect PIN");
+      alert("Incorrect Admin PIN");
+      setPinInput("");
+    }
+  };
+
+  const handleScorerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const currentTournament = tournaments.find(t => t.id === selectedTournamentId);
+    if (pinInput === currentTournament?.matchPasscode) {
+      setIsScorer(true);
+      sessionStorage.setItem('smashmaster_scorer', 'true');
+      setShowScorerModal(false);
+      setPinInput("");
+      if (activeMatchId) setView('scorer');
+    } else {
+      alert("Incorrect Scorer Passcode");
       setPinInput("");
     }
   };
 
   const handleLogout = () => {
     setIsAdmin(false);
+    setIsScorer(false);
     sessionStorage.removeItem('smashmaster_admin');
+    sessionStorage.removeItem('smashmaster_scorer');
   };
 
-  const triggerAdminLogin = () => setShowPinModal(true);
-
-  // Scoped Data Handlers
-  const addTeam = async (team: Team) => {
-    if (!isAdmin) return triggerAdminLogin();
-    const newTeam = { ...team, tournamentId: selectedTournamentId! };
-    try {
-      await api.saveTeam(newTeam);
-      await fetchData();
-    } catch (err: any) {
-      alert(`Failed to save team: ${err.message}`);
-    }
-  };
-
-  const removeTeam = async (id: string) => {
-    if (!isAdmin) return triggerAdminLogin();
-    try {
-      await api.deleteTeam(id);
-      await fetchData();
-    } catch (err: any) {
-      alert(`Failed to delete team: ${err.message}`);
-    }
-  };
-  
-  const createMatch = async (match: Match) => {
-    if (!isAdmin) return triggerAdminLogin();
-    const newMatch = { ...match, tournamentId: selectedTournamentId! };
-    try {
-      // Optimistic update
-      setMatches(prev => [newMatch, ...prev]);
-      await api.saveMatch(newMatch);
-      await fetchData();
-      setView('matches');
-    } catch (err: any) {
-      alert(`Error saving match: ${err.message || 'Check your database columns'}`);
-      console.error(err);
-      fetchData(); // Rollback
-    }
-  };
-
-  const deleteMatch = async (id: string) => {
-    if (!isAdmin) return triggerAdminLogin();
-    try {
-      await api.deleteMatch(id);
-      await fetchData();
-    } catch (err: any) {
-      alert(`Error deleting match: ${err.message}`);
-    }
-  };
-
-  const startMatch = (id: string) => {
+  const handleStartMatchRequested = (id: string) => {
     setActiveMatchId(id);
-    setView('scorer');
-  };
-
-  const updateMatch = async (updatedMatch: Match) => {
-    try {
-      await api.updateMatch(updatedMatch);
-      await fetchData();
-    } catch (err: any) {
-      alert(`Error updating score: ${err.message}`);
+    if (isAdmin || isScorer) {
+      setView('scorer');
+    } else {
+      setShowScorerModal(true);
     }
   };
 
@@ -262,10 +233,11 @@ const App: React.FC = () => {
           onCreate={handleCreateTournament}
           onDelete={handleDeleteTournament}
           isAdmin={isAdmin}
-          onAdminLogin={triggerAdminLogin}
+          onAdminLogin={() => setShowPinModal(true)}
         />
         {showPinModal && (
           <PinModal 
+            title="Admin Access"
             pinInput={pinInput} 
             setPinInput={setPinInput} 
             onSubmit={handlePinSubmit} 
@@ -282,24 +254,18 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <div 
-                className="flex items-center gap-2 cursor-pointer group" 
-                onClick={() => setView('dashboard')}
-              >
+              <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setView('dashboard')}>
                 <div className="bg-indigo-600 p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform">
                   <Trophy className="w-5 h-5 text-white" />
                 </div>
                 <div className="hidden sm:block">
                   <h1 className="text-lg font-black text-slate-900 leading-tight">SmashMaster</h1>
                   <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">
-                    {currentTournament?.name} ({currentTournament?.format})
+                    {currentTournament?.name}
                   </p>
                 </div>
               </div>
-              <button 
-                onClick={() => setSelectedTournamentId(null)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all"
-              >
+              <button onClick={() => setSelectedTournamentId(null)} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all">
                 <LayoutGrid className="w-3.5 h-3.5" />
                 Switch
               </button>
@@ -310,24 +276,16 @@ const App: React.FC = () => {
               <NavButton active={view === 'teams'} icon={<Users className="w-4 h-4" />} label="Teams" onClick={() => setView('teams')} />
               <NavButton active={view === 'matches'} icon={<Swords className="w-4 h-4" />} label="Matches" onClick={() => setView('matches')} />
               <NavButton active={view === 'standings'} icon={<Trophy className="w-4 h-4" />} label="Rankings" onClick={() => setView('standings')} />
-              
               <div className="h-6 w-px bg-slate-200 mx-1"></div>
-              
-              {isAdmin ? (
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-sm font-bold"
-                >
-                  <Unlock className="w-4 h-4" />
-                  <span className="hidden md:inline">Admin</span>
+              {isAdmin || isScorer ? (
+                <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-sm font-bold">
+                  {isAdmin ? <Unlock className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4 text-emerald-600" />}
+                  <span className="hidden md:inline">{isAdmin ? 'Admin' : 'Scorer'}</span>
                 </button>
               ) : (
-                <button 
-                  onClick={triggerAdminLogin}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors text-sm font-medium"
-                >
+                <button onClick={() => setShowPinModal(true)} className="flex items-center gap-2 px-3 py-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors text-sm font-medium">
                   <Lock className="w-4 h-4" />
-                  <span className="hidden md:inline">Admin Login</span>
+                  <span className="hidden md:inline">Login</span>
                 </button>
               )}
             </nav>
@@ -335,107 +293,45 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {showPinModal && (
-        <PinModal 
-          pinInput={pinInput} 
-          setPinInput={setPinInput} 
-          onSubmit={handlePinSubmit} 
-          onCancel={() => setShowPinModal(false)} 
-        />
-      )}
+      {showPinModal && <PinModal title="Admin Authentication" pinInput={pinInput} setPinInput={setPinInput} onSubmit={handlePinSubmit} onCancel={() => setShowPinModal(false)} />}
+      {showScorerModal && <PinModal title="Scorer Authentication" description="Enter the match access code to start scoring." pinInput={pinInput} setPinInput={setPinInput} onSubmit={handleScorerSubmit} onCancel={() => setShowScorerModal(false)} />}
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
-        {(loading || (isRefreshing && !selectedTournamentId)) && (
+        {(loading || isRefreshing) && (
           <div className="absolute inset-0 bg-slate-50/50 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pt-20">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-            <p className="text-slate-500 font-medium animate-pulse">Syncing tournament data...</p>
+            <p className="text-slate-500 font-medium">Syncing...</p>
           </div>
         )}
 
         {view === 'dashboard' && (
           <Dashboard 
-            teams={teams} 
-            matches={matches} 
-            standings={standings} 
-            onNavigate={setView} 
-            onReset={() => setSelectedTournamentId(null)}
-            isAdmin={isAdmin}
-            onAdminLogin={triggerAdminLogin}
-            tournament={currentTournament}
+            teams={teams} matches={matches} standings={standings} onNavigate={setView} onReset={() => setSelectedTournamentId(null)}
+            isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} tournament={currentTournament}
+            onUpdateTournament={handleUpdateTournament}
           />
         )}
-
-        {view === 'teams' && (
-          <TeamManager 
-            teams={teams} 
-            onAdd={addTeam} 
-            onRemove={removeTeam} 
-            isAdmin={isAdmin}
-            onAdminLogin={triggerAdminLogin}
-          />
-        )}
-
-        {view === 'matches' && (
-          <MatchManager 
-            teams={teams} 
-            matches={matches} 
-            onCreate={createMatch} 
-            onDelete={deleteMatch}
-            onStart={startMatch}
-            isAdmin={isAdmin}
-            onAdminLogin={triggerAdminLogin}
-          />
-        )}
-
-        {view === 'scorer' && activeMatch && (
-          <MatchScorer 
-            match={activeMatch} 
-            team1={teams.find(t => t.id === activeMatch.team1Id)!}
-            team2={teams.find(t => t.id === activeMatch.team2Id)!}
-            onUpdate={updateMatch}
-            onFinish={() => setView('matches')}
-          />
-        )}
-
+        {view === 'teams' && <TeamManager teams={teams} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam({...t, tournamentId: selectedTournamentId!}); fetchData(); }} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'matches' && <MatchManager teams={teams} matches={matches} onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch({...m, tournamentId: selectedTournamentId!}); fetchData(); setView('matches'); }} onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} onStart={handleStartMatchRequested} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={async (m) => { await api.updateMatch(m); fetchData(); }} onFinish={() => setView('matches')} />}
         {view === 'standings' && (
-          <Standings 
-            standings={standings} 
-            top4={top4} 
-            isAdmin={isAdmin}
-            onAddTieUp={(t1, t2) => {
-              const newMatch: Match = {
-                id: crypto.randomUUID(),
-                tournamentId: selectedTournamentId!,
-                team1Id: t1,
-                team2Id: t2,
-                status: 'scheduled',
-                format: 3,
-                pointsTarget: 21,
-                currentGame: 0,
-                scores: [],
-                createdAt: Date.now()
-              };
-              createMatch(newMatch);
-            }}
-          />
+          <Standings standings={standings} top4={top4} isAdmin={isAdmin} onAddTieUp={(t1, t2) => {
+            if(!isAdmin) return setShowPinModal(true);
+            const nm: Match = { id: crypto.randomUUID(), tournamentId: selectedTournamentId!, team1Id: t1, team2Id: t2, status: 'scheduled', format: 3, pointsTarget: 21, currentGame: 0, scores: [], createdAt: Date.now() };
+            api.saveMatch(nm).then(() => fetchData());
+          }} />
         )}
       </main>
 
       <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-slate-500 text-sm">
-          <div>&copy; {new Date().getFullYear()} SmashMaster Pro • {currentTournament?.name}</div>
+          <div>&copy; SmashMaster Pro • {currentTournament?.name}</div>
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => fetchData(true)}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 text-indigo-600 font-bold hover:text-indigo-800 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Refreshing...' : 'Sync Data'}
+            <button onClick={() => fetchData(true)} disabled={isRefreshing} className="flex items-center gap-2 text-indigo-600 font-bold hover:text-indigo-800 disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync
             </button>
             <div className="flex items-center gap-2 text-xs bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-              <Save className="w-3 h-3 text-emerald-500" />
-              Auto-archived: {lastSaved}
+              <Save className="w-3 h-3 text-emerald-500" /> Saved: {lastSaved}
             </div>
           </div>
         </div>
@@ -444,27 +340,20 @@ const App: React.FC = () => {
   );
 };
 
-const PinModal = ({ pinInput, setPinInput, onSubmit, onCancel }: any) => (
+const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCancel }: any) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
     <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
       <div className="flex flex-col items-center text-center mb-6">
         <div className="bg-indigo-100 p-3 rounded-full mb-4">
           <Lock className="w-6 h-6 text-indigo-600" />
         </div>
-        <h3 className="text-xl font-bold text-slate-900">Admin Authentication</h3>
-        <p className="text-slate-500 text-sm mt-1">Enter your secret PIN to unlock tournament management.</p>
+        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+        <p className="text-slate-500 text-sm mt-1">{description || "Enter valid credentials to continue."}</p>
       </div>
       <form onSubmit={onSubmit} className="space-y-4">
-        <input 
-          autoFocus
-          type="password"
-          value={pinInput}
-          onChange={(e) => setPinInput(e.target.value)}
-          placeholder="Enter PIN"
-          className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black"
-        />
+        <input autoFocus type="password" value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="Passcode" className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black" />
         <div className="flex gap-3">
-          <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">Unlock</button>
+          <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">Enter</button>
           <button type="button" onClick={onCancel} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
         </div>
       </form>
@@ -473,14 +362,8 @@ const PinModal = ({ pinInput, setPinInput, onSubmit, onCancel }: any) => (
 );
 
 const NavButton = ({ active, icon, label, onClick }: any) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium whitespace-nowrap ${
-      active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'
-    }`}
-  >
-    {icon}
-    <span className="hidden sm:inline">{label}</span>
+  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium whitespace-nowrap ${active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'}`}>
+    {icon} <span className="hidden sm:inline">{label}</span>
   </button>
 );
 
