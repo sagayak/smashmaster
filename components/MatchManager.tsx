@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Swords, Play, Trash2, Calendar, Trophy, Zap, Activity, Lock, Edit3, Hash } from 'lucide-react';
+import { Plus, Swords, Play, Trash2, Calendar, Trophy, Zap, Activity, Lock, Edit3, Hash, UserCheck, X, UserPlus } from 'lucide-react';
 import { Team, Match } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
 import { api } from '../lib/api';
@@ -22,12 +22,29 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
   const [team2Id, setTeam2Id] = useState('');
   const [format, setFormat] = useState<1 | 3 | 5>(3);
   const [pointsTarget, setPointsTarget] = useState<15 | 21 | 30>(21);
+  const [umpireInputs, setUmpireInputs] = useState<string[]>(['']);
 
   // Sorting matches by order primarily
   const sortedMatches = [...matches].sort((a, b) => {
     if (a.order !== b.order) return a.order - b.order;
     return b.createdAt - a.createdAt;
   });
+
+  const handleAddUmpireSlot = () => {
+    if (umpireInputs.length < 3) {
+      setUmpireInputs([...umpireInputs, '']);
+    }
+  };
+
+  const handleRemoveUmpireSlot = (index: number) => {
+    setUmpireInputs(umpireInputs.filter((_, i) => i !== index));
+  };
+
+  const updateUmpireName = (index: number, name: string) => {
+    const next = [...umpireInputs];
+    next[index] = name;
+    setUmpireInputs(next);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +59,8 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       ? Math.max(...matches.map(m => m.order || 0)) + 1 
       : 1;
 
-    // Fixed: Added tournamentId to match object
+    const validUmpires = umpireInputs.filter(u => u.trim() !== "");
+
     onCreate({
       id: crypto.randomUUID(),
       tournamentId,
@@ -54,12 +72,14 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       currentGame: 0,
       scores: [],
       createdAt: Date.now(),
-      order: nextOrder
+      order: nextOrder,
+      umpireNames: validUmpires.length > 0 ? validUmpires : undefined
     });
 
     setIsCreating(false);
     setTeam1Id('');
     setTeam2Id('');
+    setUmpireInputs(['']);
   };
 
   const handleUpdateOrder = async (matchId: string, newOrder: number) => {
@@ -67,7 +87,6 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     if (match && isAdmin) {
       const updatedMatch = { ...match, order: newOrder };
       await api.updateMatch(updatedMatch);
-      // Note: Parental state update triggered by realtime subscription in App.tsx
     }
   };
 
@@ -186,6 +205,46 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
               </div>
             </div>
 
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <div className="flex justify-between items-center mb-3">
+                <label className="flex items-center gap-2 text-sm font-black text-slate-700 uppercase tracking-widest">
+                  <UserCheck className="w-4 h-4 text-emerald-600" />
+                  Officials (Optional)
+                </label>
+                {umpireInputs.length < 3 && (
+                  <button 
+                    type="button" 
+                    onClick={handleAddUmpireSlot}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
+                  >
+                    <UserPlus className="w-3 h-3" /> Add Umpire
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {umpireInputs.map((u, i) => (
+                  <div key={i} className="relative">
+                    <input
+                      type="text"
+                      placeholder={`Umpire Name ${i+1}`}
+                      value={u}
+                      onChange={(e) => updateUmpireName(i, e.target.value)}
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 outline-none text-sm font-medium pr-10"
+                    />
+                    {umpireInputs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveUmpireSlot(i)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <button
                 type="submit"
@@ -195,7 +254,10 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
               </button>
               <button
                 type="button"
-                onClick={() => setIsCreating(false)}
+                onClick={() => {
+                  setIsCreating(false);
+                  setUmpireInputs(['']);
+                }}
                 className="px-8 py-3 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-50"
               >
                 Cancel
@@ -301,6 +363,15 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                       {s.team1}-{s.team2}
                     </div>
                   ))}
+                </div>
+              )}
+              
+              {match.umpireNames && match.umpireNames.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-50 flex items-center gap-2">
+                   <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                     Officials: {match.umpireNames.join(", ")}
+                   </span>
                 </div>
               )}
             </div>
