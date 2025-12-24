@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-// Added 'Save' to the imports from lucide-react
 import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament } from '../types';
 
@@ -196,4 +195,49 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                       <div>
                         <div className="font-black text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">{s.teamName}</div>
                         <div className="flex items-center gap-3 mt-0.5">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-
+                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{s.wins} Wins</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.pointDiff > 0 ? `+${s.pointDiff}` : s.pointDiff} PD</span>
+                        </div>
+                      </div>
+                    </div>
+                    {i === 0 && <Trophy className="w-6 h-6 text-amber-400 drop-shadow-sm" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.15em]">Primary: Wins • Secondary: Point Difference</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  onClick: () => void;
+  color: 'indigo' | 'emerald' | 'amber';
+}
+
+const StatCard: React.FC<StatCardProps> = ({ icon, label, value, onClick, color }) => {
+  const colorClasses = {
+    indigo: 'border-indigo-100 hover:border-indigo-500 bg-white shadow-indigo-100/20',
+    emerald: 'border-emerald-100 hover:border-emerald-500 bg-white shadow-emerald-100/20',
+    amber: 'border-amber-100 hover:border-amber-500 bg-white shadow-amber-100/20',
+  };
+  return (
+    <div onClick={onClick} className={`p-7 rounded-[2rem] border-2 transition-all cursor-pointer group shadow-xl relative overflow-hidden ${colorClasses[color]}`}>
+      <div className="flex items-center gap-4 mb-3 relative z-10">
+        <div className="p-2.5 bg-slate-50 rounded-2xl group-hover:bg-white group-hover:shadow-md transition-all duration-300">{icon}</div>
+        <span className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">{label}</span>
+      </div>
+      <div className="text-4xl font-black text-slate-900 tracking-tighter relative z-10 group-hover:translate-x-1 transition-transform">{value}</div>
+    </div>
+  );
+};
+
+export default Dashboard;
