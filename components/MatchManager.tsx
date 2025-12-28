@@ -22,22 +22,12 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
   const [team2Id, setTeam2Id] = useState('');
   const [format, setFormat] = useState<1 | 3 | 5>(3);
   const [pointsTarget, setPointsTarget] = useState<15 | 21 | 30>(21);
-  const [umpireInputs, setUmpireInputs] = useState<string[]>(['']);
+  const [umpireInputs, setUmpireInputs] = useState<string[]>(['', '']);
 
   const sortedMatches = [...matches].sort((a, b) => {
     if (a.order !== b.order) return a.order - b.order;
     return b.createdAt - a.createdAt;
   });
-
-  const handleAddUmpireSlot = () => {
-    if (umpireInputs.length < 3) {
-      setUmpireInputs([...umpireInputs, '']);
-    }
-  };
-
-  const handleRemoveUmpireSlot = (index: number) => {
-    setUmpireInputs(umpireInputs.filter((_, i) => i !== index));
-  };
 
   const updateUmpireName = (index: number, name: string) => {
     const next = [...umpireInputs];
@@ -77,7 +67,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     setIsCreating(false);
     setTeam1Id('');
     setTeam2Id('');
-    setUmpireInputs(['']);
+    setUmpireInputs(['', '']);
   };
 
   const handleUpdateOrder = async (matchId: string, newOrder: number) => {
@@ -95,6 +85,8 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
   };
 
   const getTeamName = (id: string) => teams.find(t => t.id === id)?.name || 'Deleted Team';
+
+  const eligibleUmpireTeams = teams.filter(t => t.id !== team1Id && t.id !== team2Id);
 
   return (
     <div className="space-y-6">
@@ -207,46 +199,25 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
               <div className="flex justify-between items-center mb-3">
                 <label className="flex items-center gap-2 text-sm font-black text-slate-700 uppercase tracking-widest">
                   <UserCheck className="w-4 h-4 text-emerald-600" />
-                  Officials (Optional)
+                  Assign Umpires
                 </label>
-                {umpireInputs.length < 3 && (
-                  <button 
-                    type="button" 
-                    onClick={handleAddUmpireSlot}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
-                  >
-                    <UserPlus className="w-3 h-3" /> Add Slot
-                  </button>
-                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {umpireInputs.map((u, i) => (
+                {[0, 1].map((i) => (
                   <div key={i} className="relative flex flex-col gap-2 p-3 bg-white rounded-lg border border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <select 
-                        value={teams.some(t => t.name === u) ? u : "custom"}
-                        onChange={(e) => {
-                          if (e.target.value === "custom") updateUmpireName(i, "");
-                          else updateUmpireName(i, e.target.value);
-                        }}
-                        className="flex-1 px-3 py-1.5 border border-slate-200 rounded text-xs font-bold outline-none bg-slate-50"
-                      >
-                        <option value="custom">-- Choose Team or Custom --</option>
-                        {teams.filter(t => t.id !== team1Id && t.id !== team2Id).map(team => (
-                          <option key={team.id} value={team.name}>{team.name} (Team)</option>
-                        ))}
-                      </select>
-                      {umpireInputs.length > 1 && (
-                        <button type="button" onClick={() => handleRemoveUmpireSlot(i)} className="text-slate-300 hover:text-red-500"><X className="w-4 h-4"/></button>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      placeholder={`Name or selection above...`}
-                      value={u}
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Umpire {i+1}</label>
+                    <select 
+                      value={umpireInputs[i]}
                       onChange={(e) => updateUmpireName(i, e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-100 rounded focus:ring-1 focus:ring-indigo-500 outline-none text-sm font-medium"
-                    />
+                      className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-bold outline-none bg-slate-50 focus:border-indigo-500"
+                    >
+                      <option value="">-- Choose Team --</option>
+                      {eligibleUmpireTeams.map(team => (
+                        <option key={team.id} value={team.name} disabled={umpireInputs.includes(team.name) && umpireInputs[i] !== team.name}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 ))}
               </div>
@@ -263,7 +234,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                 type="button"
                 onClick={() => {
                   setIsCreating(false);
-                  setUmpireInputs(['']);
+                  setUmpireInputs(['', '']);
                 }}
                 className="px-8 py-3 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-50"
               >
