@@ -245,4 +245,257 @@ const App: React.FC = () => {
       let t1GW = 0;
       let t2GW = 0;
       
-      match.scores
+      match.scores.forEach(game => {
+        if (game.team1 > game.team2) t1GW++;
+        else if (game.team2 > game.team1) t2GW++;
+
+        t1.pointsFor += (game.team1 || 0);
+        t1.pointsAgainst += (game.team2 || 0);
+        t2.pointsFor += (game.team2 || 0);
+        t2.pointsAgainst += (game.team1 || 0);
+      });
+
+      if (match.format === 3) {
+        if (t1GW === 2 && t2GW === 0) t1GW = 3;
+        else if (t2GW === 2 && t1GW === 0) t2GW = 3;
+      }
+
+      t1.gamesWon += t1GW;
+      t1.gamesLost += t2GW;
+      t2.gamesWon += t2GW;
+      t2.gamesLost += t1GW;
+    });
+
+    return Object.values(stats)
+      .map(s => ({ ...s, pointDiff: s.pointsFor - s.pointsAgainst }))
+      .sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.gamesWon !== a.gamesWon) return b.gamesWon - a.gamesWon;
+        return b.pointDiff - a.pointDiff;
+      });
+  }, [teams, matches]);
+
+  const standings = calculateStandings();
+  const top4 = standings.slice(0, 4);
+  const activeMatch = matches.find(m => m.id === activeMatchId);
+  const currentTournament = tournaments.find(t => t.id === selectedTournamentId);
+
+  const handleSelectTeamForDashboard = (teamId: string) => {
+    setSelectedTeamId(teamId);
+    setView('team-dashboard');
+  };
+
+  const eligibleUmpireTeams = teams.filter(t => 
+    activeMatch ? (t.id !== activeMatch.team1Id && t.id !== activeMatch.team2Id) : true
+  );
+
+  if (!selectedTournamentId && !loading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <TournamentSelector 
+          tournaments={tournaments}
+          onSelect={setSelectedTournamentId}
+          onCreate={handleCreateTournament}
+          onDelete={handleDeleteTournament}
+          isAdmin={isAdmin}
+          onAdminLogin={() => setShowPinModal(true)}
+        />
+        {showPinModal && (
+          <PinModal 
+            title="Admin Access"
+            pinInput={pinInput} 
+            setPinInput={setPinInput} 
+            onSubmit={handlePinSubmit} 
+            onCancel={() => setShowPinModal(false)} 
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setView('dashboard')}>
+                <div className="bg-indigo-600 p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+                  <Trophy className="w-5 h-5 text-white" />
+                </div>
+                <div className="hidden sm:block">
+                  <h1 className="text-lg font-black text-slate-900 leading-tight">SmashMaster</h1>
+                  <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">
+                    {currentTournament?.name}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedTournamentId(null)} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all">
+                <LayoutGrid className="w-3.5 h-3.5" />
+                Switch
+              </button>
+            </div>
+
+            <nav className="flex items-center gap-1 sm:gap-4">
+              <NavButton active={view === 'dashboard'} icon={<BarChart3 className="w-4 h-4" />} label="Home" onClick={() => setView('dashboard')} />
+              <NavButton active={view === 'teams' || view === 'team-dashboard'} icon={<Users className="w-4 h-4" />} label="Teams" onClick={() => setView('teams')} />
+              <NavButton active={view === 'matches'} icon={<Swords className="w-4 h-4" />} label="Matches" onClick={() => setView('matches')} />
+              <NavButton active={view === 'standings'} icon={<Trophy className="w-4 h-4" />} label="Rankings" onClick={() => setView('standings')} />
+              <div className="h-6 w-px bg-slate-200 mx-1"></div>
+              {isAdmin || isScorer ? (
+                <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-sm font-bold">
+                  {isAdmin ? <Unlock className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4 text-emerald-600" />}
+                  <span className="hidden md:inline">{isAdmin ? 'Admin' : 'Scorer'}</span>
+                </button>
+              ) : (
+                <button onClick={() => setShowPinModal(true)} className="flex items-center gap-2 px-3 py-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors text-sm font-medium">
+                  <Lock className="w-4 h-4" />
+                  <span className="hidden md:inline">Login</span>
+                </button>
+              )}
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      {showPinModal && <PinModal title="Admin Authentication" pinInput={pinInput} setPinInput={setPinInput} onSubmit={handlePinSubmit} onCancel={() => setShowPinModal(false)} />}
+      {showScorerModal && <PinModal title="Scorer Authentication" description="Enter the match access code to start scoring." pinInput={pinInput} setPinInput={setPinInput} onSubmit={handleScorerSubmit} onCancel={() => setShowScorerModal(false)} />}
+      
+      {showUmpireModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="bg-emerald-100 p-3 rounded-full mb-4">
+                <UserCheck className="w-6 h-6 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Match Officials</h3>
+              <p className="text-slate-500 text-sm mt-1">Select exactly two teams to serve as umpires for this tie-up.</p>
+            </div>
+            <form onSubmit={handleUmpireSubmit} className="space-y-5">
+              <div className="space-y-3">
+                {[0, 1].map((i) => (
+                  <div key={i} className="flex flex-col gap-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Umpire Team {i+1}</label>
+                    <select 
+                      required
+                      value={umpireInput[i]}
+                      onChange={(e) => {
+                        const next = [...umpireInput];
+                        next[i] = e.target.value;
+                        setUmpireInput(next);
+                      }}
+                      className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:border-indigo-500 transition-all"
+                    >
+                      <option value="">-- Select Umpire Team --</option>
+                      {eligibleUmpireTeams.map(t => (
+                        <option key={t.id} value={t.name} disabled={umpireInput.includes(t.name) && umpireInput[i] !== t.name}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <button 
+                  type="submit" 
+                  disabled={umpireInput.some(u => !u)}
+                  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg active:scale-95 transition-all disabled:opacity-50"
+                >
+                  Proceed to Scoreboard
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowUmpireModal(false); setView('scorer'); }} 
+                  className="w-full bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all text-xs"
+                >
+                  Skip Umpires
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
+        {(loading || isRefreshing) && (
+          <div className="absolute inset-0 bg-slate-50/50 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pt-20">
+            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
+            <p className="text-slate-500 font-medium">Syncing...</p>
+          </div>
+        )}
+
+        {view === 'dashboard' && (
+          <Dashboard 
+            teams={teams} matches={matches} standings={standings} onNavigate={setView} onReset={() => setSelectedTournamentId(null)}
+            isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} tournament={currentTournament}
+            onUpdateTournament={handleUpdateTournament}
+          />
+        )}
+        {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'matches' && <MatchManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); setView('matches'); }} onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} onStart={handleStartMatchRequested} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={async (m) => { await api.updateMatch(m); fetchData(); }} onFinish={() => setView('matches')} />}
+        {view === 'standings' && (
+          <Standings standings={standings} top4={top4} isAdmin={isAdmin} onAddTieUp={(t1, t2) => {
+            if(!isAdmin) return setShowPinModal(true);
+            const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;
+            const nm: Match = { id: crypto.randomUUID(), tournamentId: selectedTournamentId!, team1Id: t1, team2Id: t2, status: 'scheduled', format: 3, pointsTarget: 21, currentGame: 0, scores: [], createdAt: Date.now(), order: nextOrder };
+            api.saveMatch(nm).then(() => fetchData());
+          }} />
+        )}
+        {view === 'team-dashboard' && selectedTeamId && (
+          <TeamDashboard 
+            team={teams.find(t => t.id === selectedTeamId)!} 
+            matches={matches} 
+            teams={teams}
+            onBack={() => setView('teams')}
+            onStartMatch={handleStartMatchRequested}
+          />
+        )}
+      </main>
+
+      <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-slate-500 text-sm">
+          <div>&copy; SmashMaster Pro • {currentTournament?.name}</div>
+          <div className="flex items-center gap-4">
+            <button onClick={() => fetchData(true)} disabled={isRefreshing} className="flex items-center gap-2 text-indigo-600 font-bold hover:text-indigo-800 disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync
+            </button>
+            <div className="flex items-center gap-2 text-xs bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+              <Save className="w-3 h-3 text-emerald-500" /> Saved: {lastSaved}
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCancel }: any) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="flex flex-col items-center text-center mb-6">
+        <div className="bg-indigo-100 p-3 rounded-full mb-4">
+          <Lock className="w-6 h-6 text-indigo-600" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+        <p className="text-slate-500 text-sm mt-1">{description || "Enter valid credentials to continue."}</p>
+      </div>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <input autoFocus type="password" value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="Passcode" className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black" />
+        <div className="flex gap-3">
+          <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">Enter</button>
+          <button type="button" onClick={onCancel} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+);
+
+const NavButton = ({ active, icon, label, onClick }: any) => (
+  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium whitespace-nowrap ${active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'}`}>
+    {icon} <span className="hidden sm:inline">{label}</span>
+  </button>
+);
+
+export default App;
