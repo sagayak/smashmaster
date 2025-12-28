@@ -20,20 +20,20 @@ import {
 } from 'lucide-react';
 import { Team, Match, GameScore, MatchStatus } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
-import { api } from '../lib/api';
 
 interface MatchManagerProps {
   teams: Team[];
   matches: Match[];
   tournamentId: string;
   onCreate: (match: Match) => void;
+  onUpdate: (match: Match) => void;
   onDelete: (id: string) => void;
   onStart: (id: string) => void;
   isAdmin: boolean;
   onAdminLogin: () => void;
 }
 
-const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentId, onCreate, onDelete, onStart, isAdmin, onAdminLogin }) => {
+const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentId, onCreate, onUpdate, onDelete, onStart, isAdmin, onAdminLogin }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   
@@ -142,7 +142,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         winnerId: winnerId,
         scheduledAt: scheduledAt
       };
-      await api.updateMatch(updatedMatch);
+      await onUpdate(updatedMatch);
       resetForm();
     } else {
       const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;

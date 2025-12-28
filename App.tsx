@@ -149,6 +149,15 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateMatch = async (updatedMatch: Match) => {
+    try {
+      await api.updateMatch(updatedMatch);
+      fetchData();
+    } catch (err: any) {
+      alert(`Error updating match: ${err.message}`);
+    }
+  };
+
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput === ADMIN_PIN) {
@@ -442,7 +451,19 @@ const App: React.FC = () => {
           />
         )}
         {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onUpdate={handleUpdateTeam} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
-        {view === 'matches' && <MatchManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); setView('matches'); }} onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} onStart={handleStartMatchRequested} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'matches' && (
+          <MatchManager 
+            teams={teams} 
+            matches={matches} 
+            tournamentId={selectedTournamentId!} 
+            onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); setView('matches'); }} 
+            onUpdate={handleUpdateMatch}
+            onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} 
+            onStart={handleStartMatchRequested} 
+            isAdmin={isAdmin} 
+            onAdminLogin={() => setShowPinModal(true)} 
+          />
+        )}
         {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={async (m) => { await api.updateMatch(m); fetchData(); }} onFinish={() => setView('matches')} />}
         {view === 'standings' && (
           <Standings standings={standings} top4={top4} isAdmin={isAdmin} onAddTieUp={(t1, t2) => {
@@ -457,6 +478,7 @@ const App: React.FC = () => {
             team={teams.find(t => t.id === selectedTeamId)!} 
             matches={matches} 
             teams={teams}
+            standings={standings}
             onBack={() => setView('teams')}
             onStartMatch={handleStartMatchRequested}
           />

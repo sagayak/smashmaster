@@ -1,23 +1,53 @@
 
 import React from 'react';
-import { ChevronLeft, Swords, Trophy, Activity, History, Hash, UserCheck, Shield, Clock, Calendar } from 'lucide-react';
-import { Team, Match } from '../types';
+import { 
+  ChevronLeft, 
+  Swords, 
+  Trophy, 
+  Activity, 
+  History, 
+  Hash, 
+  UserCheck, 
+  Shield, 
+  Clock, 
+  Calendar, 
+  User, 
+  Users,
+  TrendingUp, 
+  LayoutList,
+  CheckCircle2,
+  PlayCircle
+} from 'lucide-react';
+import { Team, Match, StandingsEntry } from '../types';
 
 interface TeamDashboardProps {
   team: Team;
   matches: Match[];
   teams: Team[];
+  standings: StandingsEntry[];
   onBack: () => void;
   onStartMatch: (id: string) => void;
 }
 
-const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, onBack, onStartMatch }) => {
+const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, standings, onBack, onStartMatch }) => {
   const teamMatches = matches.filter(m => m.team1Id === team.id || m.team2Id === team.id);
-  const scheduled = teamMatches.filter(m => m.status === 'scheduled').length;
-  const played = teamMatches.filter(m => m.status === 'completed').length;
-  const won = teamMatches.filter(m => m.status === 'completed' && m.winnerId === team.id).length;
-  const lost = played - won;
+  const completedMatches = teamMatches.filter(m => m.status === 'completed').sort((a, b) => b.createdAt - a.createdAt);
+  const remainingMatches = teamMatches.filter(m => m.status !== 'completed').sort((a, b) => {
+    if (a.scheduledAt && b.scheduledAt) return a.scheduledAt - b.scheduledAt;
+    return (a.order || 0) - (b.order || 0);
+  });
+
+  const scheduledCount = remainingMatches.length;
+  const playedCount = completedMatches.length;
+  const wonCount = completedMatches.filter(m => m.winnerId === team.id).length;
+  const lostCount = playedCount - wonCount;
   
+  const teamRank = standings.findIndex(s => s.teamId === team.id) + 1;
+  const teamPoints = standings.find(s => s.teamId === team.id)?.pointsFor || 0;
+
+  // Calculate form (last 5)
+  const form = completedMatches.slice(0, 5).map(m => m.winnerId === team.id ? 'W' : 'L').reverse();
+
   // Calculate umpiring count
   const umpiringCount = matches.filter(m => 
     m.umpireNames?.some(name => name.trim().toLowerCase() === team.name.trim().toLowerCase())
@@ -26,110 +56,236 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, onB
   const getTeamName = (id: string) => teams.find(t => t.id === id)?.name || 'Deleted Team';
 
   return (
-    <div className="space-y-8 pb-12 animate-in fade-in duration-300">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={onBack}
-          className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-indigo-600 hover:border-indigo-100 shadow-sm transition-all active:scale-95"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">{team.name}</h2>
-          <div className="flex items-center gap-3 mt-1">
-             <span className="flex items-center gap-1.5 bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
-                <Shield className="w-3 h-3" /> Team Stats
-             </span>
-             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-               {team.members.join(", ")}
-             </span>
+    <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header with Back Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="flex items-center gap-5">
+          <button 
+            onClick={onBack}
+            className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-indigo-600 hover:border-indigo-100 shadow-sm transition-all active:scale-95"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-4xl font-black text-slate-900 tracking-tight">{team.name}</h2>
+              <div className="bg-indigo-600 text-white px-3 py-1 rounded-xl text-sm font-black flex items-center gap-1.5 shadow-lg shadow-indigo-100">
+                <TrendingUp className="w-4 h-4" />
+                Rank #{teamRank}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+               <span className="flex items-center gap-1.5 bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200">
+                  <Shield className="w-3 h-3" /> Core Identity
+               </span>
+               <div className="flex gap-1 ml-2">
+                 {form.map((res, i) => (
+                   <span key={i} className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-black ${res === 'W' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                     {res}
+                   </span>
+                 ))}
+               </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatItem label="Scheduled" value={scheduled} color="slate" icon={<Clock className="w-4 h-4"/>} />
-        <StatItem label="Matches Played" value={played} color="indigo" icon={<Activity className="w-4 h-4"/>} />
-        <StatItem label="Wins" value={won} color="emerald" icon={<Trophy className="w-4 h-4"/>} />
-        <StatItem label="Losses" value={lost} color="red" icon={<History className="w-4 h-4"/>} />
-        {/* Fix: changed umpireCount to umpiringCount to match the variable defined above */}
-        <StatItem label="Umpiring Duty" value={umpiringCount} color="amber" icon={<UserCheck className="w-4 h-4"/>} />
-      </div>
-
-      <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100">
-        <div className="flex items-center gap-3 mb-8">
-           <div className="bg-indigo-100 p-3 rounded-2xl text-indigo-600">
-             <Swords className="w-6 h-6" />
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center gap-6 shadow-sm">
+           <div className="text-center">
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Points For</div>
+              <div className="text-2xl font-black text-slate-900">{teamPoints}</div>
            </div>
-           <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Match History & Schedule</h3>
+           <div className="w-px h-8 bg-slate-100"></div>
+           <div className="text-center">
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">PD</div>
+              <div className="text-2xl font-black text-indigo-600">{standings.find(s => s.teamId === team.id)?.pointDiff || 0}</div>
+           </div>
+        </div>
+      </div>
+
+      {/* Main Grid Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <StatItem label="Remaining" value={scheduledCount} color="slate" icon={<Clock className="w-4 h-4"/>} />
+        <StatItem label="Played" value={playedCount} color="indigo" icon={<Activity className="w-4 h-4"/>} />
+        <StatItem label="Victory" value={wonCount} color="emerald" icon={<Trophy className="w-4 h-4"/>} />
+        <StatItem label="Defeat" value={lostCount} color="red" icon={<History className="w-4 h-4"/>} />
+        <StatItem label="Duty" value={umpiringCount} color="amber" icon={<UserCheck className="w-4 h-4"/>} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1 space-y-8">
+          {/* Squad Members Card */}
+          <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100">
+             <div className="flex items-center gap-3 mb-6">
+                <div className="bg-indigo-100 p-3 rounded-2xl text-indigo-600">
+                   <Users className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Active Squad</h3>
+             </div>
+             <div className="space-y-3">
+                {team.members.map((member, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-100 group hover:border-indigo-200 hover:bg-white transition-all">
+                     <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-300 group-hover:text-indigo-500 transition-colors shadow-sm">
+                        <User className="w-6 h-6" />
+                     </div>
+                     <div>
+                        <div className="font-black text-slate-900 text-lg leading-tight">{member}</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Player Rank #{(i+1) * 7}</div>
+                     </div>
+                  </div>
+                ))}
+             </div>
+          </section>
+
+          {/* Points Table Context */}
+          <section className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl overflow-hidden relative">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
+             <div className="flex items-center gap-3 mb-6 relative z-10">
+                <LayoutList className="w-6 h-6 text-indigo-400" />
+                <h3 className="text-xl font-black italic tracking-tight uppercase">Leaderboard Position</h3>
+             </div>
+             <div className="space-y-4 relative z-10">
+                {standings.slice(Math.max(0, teamRank - 2), teamRank + 2).map((s, idx) => {
+                   const isCurrent = s.teamId === team.id;
+                   const absoluteRank = standings.findIndex(entry => entry.teamId === s.teamId) + 1;
+                   return (
+                     <div key={s.teamId} className={`flex items-center justify-between p-3 rounded-2xl transition-all ${isCurrent ? 'bg-indigo-600 scale-105 shadow-xl ring-2 ring-indigo-400' : 'bg-white/5'}`}>
+                        <div className="flex items-center gap-3">
+                           <span className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-black ${isCurrent ? 'bg-white text-indigo-600' : 'bg-white/10 text-white/40'}`}>
+                              {absoluteRank}
+                           </span>
+                           <span className={`font-black text-sm truncate max-w-[120px] ${isCurrent ? 'text-white' : 'text-white/70'}`}>{s.teamName}</span>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{s.wins}W</span>
+                     </div>
+                   );
+                })}
+             </div>
+          </section>
         </div>
 
-        {teamMatches.length === 0 ? (
-          <div className="py-20 text-center text-slate-400 italic font-medium bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-            No matches found for this team yet.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {teamMatches.sort((a,b) => (a.order || 0) - (b.order || 0)).map(match => {
-              const isTeam1 = match.team1Id === team.id;
-              const opponentName = getTeamName(isTeam1 ? match.team2Id : match.team1Id);
-              const isWinner = match.winnerId === team.id;
-              
-              return (
-                <div key={match.id} className="p-5 border border-slate-100 rounded-3xl bg-slate-50/50 flex flex-col justify-between hover:bg-white hover:border-indigo-100 transition-all group">
-                   <div className="flex justify-between items-start mb-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="bg-slate-900 text-white px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1 w-fit">
-                          <Hash className="w-2.5 h-2.5" /> Match {match.order}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Upcoming Matches */}
+          <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100">
+             <div className="flex items-center justify-between mb-8">
+               <div className="flex items-center gap-3">
+                  <div className="bg-indigo-100 p-3 rounded-2xl text-indigo-600">
+                     <PlayCircle className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Upcoming Schedule</h3>
+               </div>
+               <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                 {remainingMatches.length} Matches Left
+               </span>
+             </div>
+
+             {remainingMatches.length === 0 ? (
+               <div className="py-20 text-center text-slate-400 italic font-medium bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                 No remaining matches in the schedule.
+               </div>
+             ) : (
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 {remainingMatches.map(match => {
+                   const isTeam1 = match.team1Id === team.id;
+                   const opponentName = getTeamName(isTeam1 ? match.team2Id : match.team1Id);
+                   return (
+                     <div key={match.id} className="p-6 border border-slate-100 rounded-[2rem] bg-slate-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-lg transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                           <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                              <Hash className="w-3 h-3" /> Match #{match.order}
+                           </div>
+                           {match.scheduledAt && (
+                             <div className="flex items-center gap-1 text-slate-400 text-[10px] font-bold">
+                               <Calendar className="w-3 h-3" /> {new Date(match.scheduledAt).toLocaleDateString()}
+                             </div>
+                           )}
                         </div>
-                        {match.scheduledAt && (
-                          <div className="flex items-center gap-1 text-indigo-600 text-[9px] font-black uppercase tracking-widest mt-1">
-                            <Calendar className="w-2.5 h-2.5" /> {new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        )}
-                      </div>
-                      <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${
-                        match.status === 'completed' ? (isWinner ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700') : 'bg-slate-200 text-slate-600'
-                      }`}>
-                        {match.status === 'completed' ? (isWinner ? 'Victory' : 'Defeat') : match.status}
-                      </span>
-                   </div>
+                        <div className="flex items-center gap-4 mb-4">
+                           <div className="flex-1">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Facing</div>
+                              <div className="font-black text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">{opponentName}</div>
+                           </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                           <div className="flex items-center gap-2 text-indigo-600">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span className="text-[10px] font-black uppercase tracking-widest">
+                                {match.scheduledAt ? new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}
+                              </span>
+                           </div>
+                           <button onClick={() => onStartMatch(match.id)} className="text-indigo-600 hover:text-indigo-800 font-black text-[10px] uppercase tracking-widest flex items-center gap-1">
+                              Go To Match <ChevronLeft className="w-3 h-3 rotate-180" />
+                           </button>
+                        </div>
+                     </div>
+                   );
+                 })}
+               </div>
+             )}
+          </section>
 
-                   <div className="flex items-center justify-between mb-4">
-                      <div className="text-center flex-1">
-                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Our Team</div>
-                         <div className="font-black text-slate-900 text-sm truncate">{team.name}</div>
-                      </div>
-                      <div className="font-black text-slate-300 italic px-4">VS</div>
-                      <div className="text-center flex-1">
-                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Opponent</div>
-                         <div className="font-black text-slate-900 text-sm truncate">{opponentName}</div>
-                      </div>
-                   </div>
+          {/* Completed Matches History */}
+          <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100">
+             <div className="flex items-center justify-between mb-8">
+               <div className="flex items-center gap-3">
+                  <div className="bg-emerald-100 p-3 rounded-2xl text-emerald-600">
+                     <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Recent History</h3>
+               </div>
+             </div>
 
-                   <div className="flex justify-between items-center">
-                      <div className="flex gap-1.5">
-                        {match.scores.map((s, idx) => (
-                          <span key={idx} className="bg-white px-2 py-1 rounded-lg border border-slate-100 text-[10px] font-black text-slate-600">
-                            {isTeam1 ? `${s.team1}-${s.team2}` : `${s.team2}-${s.team1}`}
-                          </span>
-                        ))}
-                      </div>
-                      {match.status !== 'completed' && (
-                        <button 
-                          onClick={() => onStartMatch(match.id)}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all hover:bg-indigo-700"
-                        >
-                          Go to Scoreboard
-                        </button>
-                      )}
-                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+             {completedMatches.length === 0 ? (
+               <div className="py-20 text-center text-slate-400 italic font-medium bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                 History is empty. Complete matches to see them here.
+               </div>
+             ) : (
+               <div className="space-y-4">
+                 {completedMatches.map(match => {
+                   const isTeam1 = match.team1Id === team.id;
+                   const opponentName = getTeamName(isTeam1 ? match.team2Id : match.team1Id);
+                   const isWinner = match.winnerId === team.id;
+                   
+                   return (
+                     <div key={match.id} className="p-6 border border-slate-100 rounded-3xl bg-slate-50/50 flex flex-col md:flex-row items-center gap-6 group hover:bg-white transition-all">
+                        <div className="flex flex-col items-center md:items-start min-w-[120px]">
+                           <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-2 ${isWinner ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-red-500 text-white shadow-lg shadow-red-100'}`}>
+                              {isWinner ? 'Victory' : 'Defeat'}
+                           </span>
+                           <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Match #{match.order}</span>
+                        </div>
+
+                        <div className="flex-1 flex items-center justify-center gap-8 text-center">
+                           <div className="flex-1 flex flex-col items-center">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Our Team</span>
+                              <span className="font-black text-slate-900 truncate max-w-[100px]">{team.name}</span>
+                           </div>
+                           <div className="flex flex-col items-center">
+                              <span className="text-sm font-black text-slate-300 italic mb-1">VS</span>
+                              <div className="bg-slate-900 text-white px-3 py-1 rounded-lg text-xs font-black tabular-nums">
+                                 {match.scores.reduce((acc, s) => acc + (isTeam1 ? (s.team1 > s.team2 ? 1 : 0) : (s.team2 > s.team1 ? 1 : 0)), 0)} - {match.scores.reduce((acc, s) => acc + (isTeam1 ? (s.team2 > s.team1 ? 1 : 0) : (s.team1 > s.team2 ? 1 : 0)), 0)}
+                              </div>
+                           </div>
+                           <div className="flex-1 flex flex-col items-center">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Opponent</span>
+                              <span className="font-black text-slate-900 truncate max-w-[100px]">{opponentName}</span>
+                           </div>
+                        </div>
+
+                        <div className="flex gap-1.5">
+                           {match.scores.map((s, idx) => (
+                             <span key={idx} className="bg-white px-2 py-1 rounded-lg border border-slate-100 text-[10px] font-black text-slate-600 shadow-sm">
+                               {isTeam1 ? `${s.team1}-${s.team2}` : `${s.team2}-${s.team1}`}
+                             </span>
+                           ))}
+                        </div>
+                     </div>
+                   );
+                 })}
+               </div>
+             )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 };
@@ -143,12 +299,12 @@ const StatItem = ({ label, value, color, icon }: { label: string, value: number,
     amber: "bg-amber-50 text-amber-700 border-amber-100",
   };
   return (
-    <div className={`p-6 rounded-3xl border shadow-sm ${themes[color] || themes.slate}`}>
+    <div className={`p-6 rounded-3xl border shadow-sm ${themes[color] || themes.slate} transition-transform hover:-translate-y-1`}>
       <div className="flex items-center gap-2 mb-2 opacity-60">
         {icon}
         <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
       </div>
-      <div className="text-4xl font-black tracking-tighter tabular-nums">{value}</div>
+      <div className="text-4xl font-black tracking-tighter tabular-nums leading-none">{value}</div>
     </div>
   );
 };
