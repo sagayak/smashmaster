@@ -16,7 +16,8 @@ import {
   TrendingUp, 
   LayoutList,
   CheckCircle2,
-  PlayCircle
+  PlayCircle,
+  Flame
 } from 'lucide-react';
 import { Team, Match, StandingsEntry } from '../types';
 
@@ -47,6 +48,30 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
 
   // Calculate form (last 5)
   const form = completedMatches.slice(0, 5).map(m => m.winnerId === team.id ? 'W' : 'L').reverse();
+
+  // Calculate Head-to-Head Stats
+  const h2hStats = completedMatches.reduce((acc, match) => {
+    const isTeam1 = match.team1Id === team.id;
+    const opponentId = isTeam1 ? match.team2Id : match.team1Id;
+    const isWinner = match.winnerId === team.id;
+
+    if (!acc[opponentId]) {
+      acc[opponentId] = {
+        opponentName: teams.find(t => t.id === opponentId)?.name || 'Unknown',
+        wins: 0,
+        losses: 0,
+        matches: []
+      };
+    }
+
+    if (isWinner) acc[opponentId].wins++;
+    else acc[opponentId].losses++;
+
+    acc[opponentId].matches.push(match);
+    return acc;
+  }, {} as Record<string, { opponentName: string, wins: number, losses: number, matches: Match[] }>);
+
+  const h2hList = Object.values(h2hStats);
 
   // Calculate umpiring count
   const umpiringCount = matches.filter(m => 
@@ -164,6 +189,50 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
         </div>
 
         <div className="lg:col-span-2 space-y-8">
+          {/* Head-to-Head Section */}
+          <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100">
+             <div className="flex items-center justify-between mb-8">
+               <div className="flex items-center gap-3">
+                  <div className="bg-amber-100 p-3 rounded-2xl text-amber-600">
+                     <Flame className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Head-to-Head Records</h3>
+               </div>
+             </div>
+
+             {h2hList.length === 0 ? (
+               <div className="py-12 text-center text-slate-400 italic font-medium bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                 No rivalries recorded yet. Play a match to see H2H stats.
+               </div>
+             ) : (
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {h2hList.map((stat, i) => (
+                   <div key={i} className="p-6 border border-slate-100 rounded-[2rem] bg-white hover:bg-slate-50/50 transition-all group shadow-sm">
+                      <div className="flex justify-between items-center mb-4">
+                         <div className="font-black text-slate-900 text-lg">{stat.opponentName}</div>
+                         <div className="flex items-center gap-1 bg-slate-900 text-white px-3 py-1 rounded-xl text-xs font-black tabular-nums">
+                            {stat.wins} - {stat.losses}
+                         </div>
+                      </div>
+                      <div className="space-y-2">
+                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Score History</div>
+                         <div className="flex flex-wrap gap-2">
+                           {stat.matches.map(m => {
+                             const isTeam1 = m.team1Id === team.id;
+                             return m.scores.map((s, idx) => (
+                               <span key={`${m.id}-${idx}`} className="bg-slate-100 px-2 py-1 rounded text-[10px] font-bold text-slate-600 border border-slate-200">
+                                 {isTeam1 ? `${s.team1}-${s.team2}` : `${s.team2}-${s.team1}`}
+                               </span>
+                             ));
+                           })}
+                         </div>
+                      </div>
+                   </div>
+                 ))}
+               </div>
+             )}
+          </section>
+
           {/* Upcoming Matches */}
           <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100">
              <div className="flex items-center justify-between mb-8">

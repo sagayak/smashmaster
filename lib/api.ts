@@ -43,11 +43,12 @@ const toSnakeCasePayload = (obj: any) => {
     snake.order_index = safeInt(obj.order, 1);
   }
   
-  if (obj.scores) {
+  // Ensure JSON fields are strictly arrays or empty arrays, never null/undefined
+  if (Object.prototype.hasOwnProperty.call(obj, 'scores')) {
     snake.scores = Array.isArray(obj.scores) ? obj.scores : [];
   }
 
-  if (obj.umpireNames) {
+  if (Object.prototype.hasOwnProperty.call(obj, 'umpireNames')) {
     snake.umpire_names = Array.isArray(obj.umpireNames) ? obj.umpireNames : [];
   }
   
@@ -58,15 +59,14 @@ const toSnakeCasePayload = (obj: any) => {
   if (obj.scheduledAt) {
     snake.scheduled_at = new Date(obj.scheduledAt).toISOString();
   } else {
-    snake.scheduled_at = null;
+    if (Object.prototype.hasOwnProperty.call(obj, 'scheduledAt')) {
+      snake.scheduled_at = null;
+    }
   }
 
   return snake;
 };
 
-/**
- * Maps backend snake_case response back to frontend camelCase Types.
- */
 const fromSnakeCase = (data: any[]): any[] => {
   return data.map(item => {
     const isTournament = Object.prototype.hasOwnProperty.call(item, 'format') && !Object.prototype.hasOwnProperty.call(item, 'team1_id');
@@ -98,6 +98,7 @@ const fromSnakeCase = (data: any[]): any[] => {
 
     if (isMatch) {
       let scores = item.scores || [];
+      // Handle cases where scores might still be stringified in the DB
       if (typeof scores === 'string') {
         try { scores = JSON.parse(scores); } catch (e) { scores = []; }
       }
@@ -111,7 +112,7 @@ const fromSnakeCase = (data: any[]): any[] => {
         pointsTarget: item.points_target ?? 21,
         currentGame: item.current_game ?? 0,
         order: item.order_index ?? 1,
-        umpireNames: item.umpire_names || [],
+        umpireNames: Array.isArray(item.umpire_names) ? item.umpire_names : [],
         scores: Array.isArray(scores) ? scores : [],
         scheduledAt: item.scheduled_at ? new Date(item.scheduled_at).getTime() : undefined,
       } as Match;
@@ -150,6 +151,7 @@ export const api = {
   async updateTournament(tournament: Tournament): Promise<void> {
     if (supabase) {
       const payload = toSnakeCasePayload(tournament);
+      delete payload.id;
       const { error } = await supabase.from('tournaments').update(payload).eq('id', tournament.id);
       if (error) throw error;
       return;
@@ -195,6 +197,8 @@ export const api = {
   async updateTeam(team: Team): Promise<void> {
     if (supabase) {
       const payload = toSnakeCasePayload(team);
+      delete payload.id;
+      delete payload.tournament_id;
       const { error } = await supabase.from('teams').update(payload).eq('id', team.id);
       if (error) throw error;
       return;
@@ -240,6 +244,9 @@ export const api = {
   async updateMatch(match: Match): Promise<void> {
     if (supabase) {
       const payload = toSnakeCasePayload(match);
+      // Explicitly remove immutable fields
+      delete payload.id;
+      delete payload.tournament_id;
       const { error } = await supabase.from('matches').update(payload).eq('id', match.id);
       if (error) throw error;
       return;
