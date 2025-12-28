@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Match, Team, GameScore, MatchStatus } from '../types';
-import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck } from 'lucide-react';
+import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3 } from 'lucide-react';
 
 interface MatchScorerProps {
   match: Match;
@@ -26,10 +26,23 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
     if (team === 1) setT1Score(prev => prev + 1);
     else setT2Score(prev => prev + 1);
     
-    // Simple visual haptic feedback (using browser API if available)
     if ('vibrate' in navigator) {
       navigator.vibrate(50);
     }
+  };
+
+  const removePoint = (team: 1 | 2, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHistory([...history, { t1: t1Score, t2: t2Score }]);
+    if (team === 1) setT1Score(prev => Math.max(0, prev - 1));
+    else setT2Score(prev => Math.max(0, prev - 1));
+  };
+
+  const handleScoreInput = (team: 1 | 2, val: string) => {
+    const numValue = parseInt(val) || 0;
+    setHistory([...history, { t1: t1Score, t2: t2Score }]);
+    if (team === 1) setT1Score(numValue);
+    else setT2Score(numValue);
   };
 
   const undoPoint = () => {
@@ -84,14 +97,12 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
     }
   };
 
-  const winningTeam = t1Score > t2Score ? team1.name : team2.name;
   const canFinishGame = t1Score >= match.pointsTarget || t2Score >= match.pointsTarget;
 
   useEffect(() => {
     if (match.status === 'scheduled') {
       onUpdate({ ...match, status: 'live' });
     }
-    // Lock body scroll to prevent refreshing while scoring
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = 'auto';
@@ -136,9 +147,9 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
       {/* Main Score Area */}
       <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full min-h-0 mb-6">
         {/* Team 1 Score Card */}
-        <button 
+        <div 
           onClick={() => addPoint(1)}
-          className={`flex flex-col items-center justify-center p-8 rounded-[2.5rem] border-[6px] transition-all active:scale-95 relative overflow-hidden ${
+          className={`group flex flex-col items-center justify-center p-8 rounded-[2.5rem] border-[6px] transition-all cursor-pointer relative overflow-hidden ${
             t1Score > t2Score 
               ? 'bg-indigo-600 border-indigo-400 text-white shadow-2xl shadow-indigo-200' 
               : 'bg-white border-slate-100 text-slate-900 shadow-md'
@@ -152,21 +163,35 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
               Sets: {t1GamesWon}
             </div>
           </div>
-          <div className="text-[12rem] font-black tabular-nums leading-none tracking-tighter relative z-10">
-            {t1Score}
+          
+          <div className="flex flex-col items-center gap-2 relative z-10">
+            <input 
+              type="number" 
+              value={t1Score}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => handleScoreInput(1, e.target.value)}
+              className={`text-[12rem] font-black tabular-nums leading-none tracking-tighter bg-transparent w-full text-center outline-none border-none focus:ring-0 cursor-text`}
+            />
+            <div className="flex gap-8 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button onClick={(e) => removePoint(1, e)} className="p-4 bg-white/20 hover:bg-white/40 rounded-full transition-all backdrop-blur-sm">
+                  <Minus className="w-8 h-8" />
+               </button>
+               <div className="p-4 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                  <Edit3 className="w-8 h-8" />
+               </div>
+               <button onClick={(e) => { e.stopPropagation(); addPoint(1); }} className="p-4 bg-white/20 hover:bg-white/40 rounded-full transition-all backdrop-blur-sm">
+                  <Plus className="w-8 h-8" />
+               </button>
+            </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 opacity-30 relative z-10">
-             <PlusCircle className="w-5 h-5" />
-             <span className="text-xs font-black uppercase">Tap to Score</span>
-          </div>
-          {/* Subtle background rank indicator */}
+
           <div className="absolute -bottom-10 -left-10 text-[20rem] font-black opacity-[0.03] select-none pointer-events-none">1</div>
-        </button>
+        </div>
 
         {/* Team 2 Score Card */}
-        <button 
+        <div 
           onClick={() => addPoint(2)}
-          className={`flex flex-col items-center justify-center p-8 rounded-[2.5rem] border-[6px] transition-all active:scale-95 relative overflow-hidden ${
+          className={`group flex flex-col items-center justify-center p-8 rounded-[2.5rem] border-[6px] transition-all cursor-pointer relative overflow-hidden ${
             t2Score > t1Score 
               ? 'bg-emerald-600 border-emerald-400 text-white shadow-2xl shadow-emerald-200' 
               : 'bg-white border-slate-100 text-slate-900 shadow-md'
@@ -180,15 +205,30 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
               Sets: {t2GamesWon}
             </div>
           </div>
-          <div className="text-[12rem] font-black tabular-nums leading-none tracking-tighter relative z-10">
-            {t2Score}
+
+          <div className="flex flex-col items-center gap-2 relative z-10">
+            <input 
+              type="number" 
+              value={t2Score}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => handleScoreInput(2, e.target.value)}
+              className={`text-[12rem] font-black tabular-nums leading-none tracking-tighter bg-transparent w-full text-center outline-none border-none focus:ring-0 cursor-text`}
+            />
+            <div className="flex gap-8 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button onClick={(e) => removePoint(2, e)} className="p-4 bg-white/20 hover:bg-white/40 rounded-full transition-all backdrop-blur-sm">
+                  <Minus className="w-8 h-8" />
+               </button>
+               <div className="p-4 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                  <Edit3 className="w-8 h-8" />
+               </div>
+               <button onClick={(e) => { e.stopPropagation(); addPoint(2); }} className="p-4 bg-white/20 hover:bg-white/40 rounded-full transition-all backdrop-blur-sm">
+                  <Plus className="w-8 h-8" />
+               </button>
+            </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 opacity-30 relative z-10">
-             <PlusCircle className="w-5 h-5" />
-             <span className="text-xs font-black uppercase">Tap to Score</span>
-          </div>
+          
           <div className="absolute -bottom-10 -right-10 text-[20rem] font-black opacity-[0.03] select-none pointer-events-none">2</div>
-        </button>
+        </div>
       </div>
 
       {/* Footer / Finish Actions */}
@@ -211,7 +251,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
           </button>
         ) : (
           <div className="flex-1 bg-slate-100 rounded-[2rem] py-6 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-sm italic">
-            First to {match.pointsTarget} Points
+            Enter Scores for Game {match.scores.length + 1}
           </div>
         )}
 
