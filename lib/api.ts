@@ -55,6 +55,12 @@ const toSnakeCasePayload = (obj: any) => {
     snake.created_at = new Date(obj.createdAt).toISOString();
   }
 
+  if (obj.scheduledAt) {
+    snake.scheduled_at = new Date(obj.scheduledAt).toISOString();
+  } else {
+    snake.scheduled_at = null;
+  }
+
   return snake;
 };
 
@@ -107,6 +113,7 @@ const fromSnakeCase = (data: any[]): any[] => {
         order: item.order_index ?? 1,
         umpireNames: item.umpire_names || [],
         scores: Array.isArray(scores) ? scores : [],
+        scheduledAt: item.scheduled_at ? new Date(item.scheduled_at).getTime() : undefined,
       } as Match;
     }
 

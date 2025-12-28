@@ -1,7 +1,24 @@
 
 import React, { useState } from 'react';
-import { Plus, Swords, Play, Trash2, Calendar, Trophy, Zap, Activity, Lock, Edit3, Hash, UserCheck, X, UserPlus, ChevronDown } from 'lucide-react';
-import { Team, Match } from '../types';
+import { 
+  Plus, 
+  Swords, 
+  Play, 
+  Trash2, 
+  Calendar, 
+  Trophy, 
+  Zap, 
+  Activity, 
+  Lock, 
+  Edit3, 
+  Hash, 
+  UserCheck, 
+  X, 
+  Save, 
+  Settings2,
+  Clock
+} from 'lucide-react';
+import { Team, Match, GameScore, MatchStatus } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
 import { api } from '../lib/api';
 
@@ -18,24 +35,77 @@ interface MatchManagerProps {
 
 const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentId, onCreate, onDelete, onStart, isAdmin, onAdminLogin }) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  
+  // Shared form state for both create and edit
   const [team1Id, setTeam1Id] = useState('');
   const [team2Id, setTeam2Id] = useState('');
   const [format, setFormat] = useState<1 | 3 | 5>(3);
   const [pointsTarget, setPointsTarget] = useState<15 | 21 | 30>(21);
   const [umpireInputs, setUmpireInputs] = useState<string[]>(['', '']);
+  const [matchScores, setMatchScores] = useState<GameScore[]>([]);
+  const [matchStatus, setMatchStatus] = useState<MatchStatus>('scheduled');
+  const [matchDate, setMatchDate] = useState('');
+  const [matchTime, setMatchTime] = useState('');
 
   const sortedMatches = [...matches].sort((a, b) => {
     if (a.order !== b.order) return a.order - b.order;
     return b.createdAt - a.createdAt;
   });
 
-  const updateUmpireName = (index: number, name: string) => {
-    const next = [...umpireInputs];
-    next[index] = name;
-    setUmpireInputs(next);
+  const resetForm = () => {
+    setTeam1Id('');
+    setTeam2Id('');
+    setFormat(3);
+    setPointsTarget(21);
+    setUmpireInputs(['', '']);
+    setMatchScores([]);
+    setMatchStatus('scheduled');
+    setMatchDate('');
+    setMatchTime('');
+    setIsCreating(false);
+    setEditingMatch(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleStartEditing = (match: Match) => {
+    setEditingMatch(match);
+    setTeam1Id(match.team1Id);
+    setTeam2Id(match.team2Id);
+    setFormat(match.format);
+    setPointsTarget(match.pointsTarget);
+    setUmpireInputs(match.umpireNames && match.umpireNames.length >= 2 ? [match.umpireNames[0], match.umpireNames[1]] : ['', '']);
+    setMatchScores([...match.scores]);
+    setMatchStatus(match.status);
+    
+    if (match.scheduledAt) {
+      const d = new Date(match.scheduledAt);
+      setMatchDate(d.toISOString().split('T')[0]);
+      setMatchTime(d.toTimeString().split(' ')[0].substring(0, 5));
+    } else {
+      setMatchDate('');
+      setMatchTime('');
+    }
+    
+    setIsCreating(false);
+  };
+
+  const handleScoreChange = (index: number, team: 1 | 2, value: string) => {
+    const nextScores = [...matchScores];
+    const numValue = parseInt(value) || 0;
+    if (team === 1) nextScores[index].team1 = numValue;
+    else nextScores[index].team2 = numValue;
+    setMatchScores(nextScores);
+  };
+
+  const addScoreRow = () => {
+    setMatchScores([...matchScores, { team1: 0, team2: 0 }]);
+  };
+
+  const removeScoreRow = (index: number) => {
+    setMatchScores(matchScores.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
     if (!team1Id || !team2Id || team1Id === team2Id) {
@@ -43,38 +113,55 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       return;
     }
 
-    const nextOrder = matches.length > 0 
-      ? Math.max(...matches.map(m => m.order || 0)) + 1 
-      : 1;
-
     const validUmpires = umpireInputs.filter(u => u.trim() !== "");
+    
+    // Auto-calculate winner if completed
+    let winnerId: string | undefined = undefined;
+    if (matchStatus === 'completed' && matchScores.length > 0) {
+      const t1Wins = matchScores.filter(s => s.team1 > s.team2).length;
+      const t2Wins = matchScores.filter(s => s.team2 > s.team1).length;
+      if (t1Wins > t2Wins) winnerId = team1Id;
+      else if (t2Wins > t1Wins) winnerId = team2Id;
+    }
 
-    onCreate({
-      id: crypto.randomUUID(),
-      tournamentId,
-      team1Id,
-      team2Id,
-      status: 'scheduled',
-      format,
-      pointsTarget,
-      currentGame: 0,
-      scores: [],
-      createdAt: Date.now(),
-      order: nextOrder,
-      umpireNames: validUmpires.length > 0 ? validUmpires : undefined
-    });
+    let scheduledAt: number | undefined = undefined;
+    if (matchDate && matchTime) {
+      scheduledAt = new Date(`${matchDate}T${matchTime}`).getTime();
+    }
 
-    setIsCreating(false);
-    setTeam1Id('');
-    setTeam2Id('');
-    setUmpireInputs(['', '']);
-  };
-
-  const handleUpdateOrder = async (matchId: string, newOrder: number) => {
-    const match = matches.find(m => m.id === matchId);
-    if (match && isAdmin) {
-      const updatedMatch = { ...match, order: newOrder };
+    if (editingMatch) {
+      const updatedMatch: Match = {
+        ...editingMatch,
+        team1Id,
+        team2Id,
+        format,
+        pointsTarget,
+        umpireNames: validUmpires.length > 0 ? validUmpires : undefined,
+        scores: matchScores,
+        status: matchStatus,
+        winnerId: winnerId,
+        scheduledAt: scheduledAt
+      };
       await api.updateMatch(updatedMatch);
+      resetForm();
+    } else {
+      const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;
+      onCreate({
+        id: crypto.randomUUID(),
+        tournamentId,
+        team1Id,
+        team2Id,
+        status: 'scheduled',
+        format,
+        pointsTarget,
+        currentGame: 0,
+        scores: [],
+        createdAt: Date.now(),
+        scheduledAt: scheduledAt,
+        order: nextOrder,
+        umpireNames: validUmpires.length > 0 ? validUmpires : undefined
+      });
+      resetForm();
     }
   };
 
@@ -97,7 +184,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         </div>
         {isAdmin ? (
           <button
-            onClick={() => setIsCreating(true)}
+            onClick={() => { resetForm(); setIsCreating(true); }}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all active:scale-95"
             disabled={teams.length < 2}
           >
@@ -115,35 +202,43 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         )}
       </div>
 
-      {isCreating && isAdmin && (
-        <div className="bg-white border border-indigo-100 rounded-xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Team 1</label>
-                <select
-                  required
-                  value={team1Id}
-                  onChange={(e) => setTeam1Id(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-white"
-                >
-                  <option value="">Select Team 1</option>
-                  {teams.map(t => (
-                    <option key={t.id} value={t.id} disabled={t.id === team2Id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col justify-center items-center h-full relative">
-                <div className="absolute top-1/2 -translate-y-1/2 bg-slate-100 p-2 rounded-full hidden md:block">
-                  <Swords className="w-4 h-4 text-slate-400" />
-                </div>
-                <div className="w-full">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Team 2</label>
+      {(isCreating || editingMatch) && isAdmin && (
+        <div className="bg-white border-2 border-indigo-500 rounded-3xl p-8 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-indigo-600 p-2 rounded-xl">
+              <Settings2 className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+              {editingMatch ? `Edit Match #${editingMatch.order}` : 'Schedule New Match'}
+            </h3>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <label className="block text-sm font-black text-slate-700 uppercase tracking-widest">Contestants</label>
+                <div className="grid grid-cols-1 gap-3">
+                  <select
+                    required
+                    value={team1Id}
+                    onChange={(e) => setTeam1Id(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-bold bg-slate-50 transition-all"
+                  >
+                    <option value="">Select Team 1</option>
+                    {teams.map(t => (
+                      <option key={t.id} value={t.id} disabled={t.id === team2Id}>{t.name}</option>
+                    ))}
+                  </select>
+                  <div className="flex justify-center">
+                    <div className="bg-slate-100 p-2 rounded-full">
+                      <Swords className="w-4 h-4 text-slate-400" />
+                    </div>
+                  </div>
                   <select
                     required
                     value={team2Id}
                     onChange={(e) => setTeam2Id(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-white"
+                    className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-bold bg-slate-50 transition-all"
                   >
                     <option value="">Select Team 2</option>
                     {teams.map(t => (
@@ -152,91 +247,165 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                   </select>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Match Format</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {FORMATS.map(f => (
-                    <button
-                      key={f.value}
-                      type="button"
-                      onClick={() => setFormat(f.value as 1|3|5)}
-                      className={`py-2 rounded-lg font-medium border transition-all ${
-                        format === f.value 
-                          ? 'bg-indigo-600 text-white border-indigo-600' 
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
+              <div className="space-y-4">
+                <label className="block text-sm font-black text-slate-700 uppercase tracking-widest">Schedule (Optional)</label>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Date</span>
+                     <input 
+                       type="date"
+                       value={matchDate}
+                       onChange={(e) => setMatchDate(e.target.value)}
+                       className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50 outline-none focus:border-indigo-500"
+                     />
+                   </div>
+                   <div className="space-y-2">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Time</span>
+                     <input 
+                       type="time"
+                       value={matchTime}
+                       onChange={(e) => setMatchTime(e.target.value)}
+                       className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50 outline-none focus:border-indigo-500"
+                     />
+                   </div>
+                </div>
+
+                <label className="block text-sm font-black text-slate-700 uppercase tracking-widest mt-4">Match Config</label>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Best Of</span>
+                     <select 
+                       value={format} 
+                       onChange={(e) => setFormat(parseInt(e.target.value) as 1|3|5)}
+                       className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50"
+                     >
+                       {FORMATS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                     </select>
+                   </div>
+                   <div className="space-y-2">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Game Points</span>
+                     <select 
+                       value={pointsTarget} 
+                       onChange={(e) => setPointsTarget(parseInt(e.target.value) as 15|21|30)}
+                       className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50"
+                     >
+                       {POINTS_TARGETS.map(p => <option key={p} value={p}>{p} Pts</option>)}
+                     </select>
+                   </div>
+                </div>
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Match Status</span>
+                  <div className="flex gap-2">
+                    {(['scheduled', 'live', 'completed'] as MatchStatus[]).map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setMatchStatus(s)}
+                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
+                          matchStatus === s ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Game Points</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {POINTS_TARGETS.map(p => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPointsTarget(p as 15|21|30)}
-                      className={`py-2 rounded-lg font-medium border transition-all ${
-                        pointsTarget === p 
-                          ? 'bg-indigo-600 text-white border-indigo-600' 
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {p} Pts
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div className="flex justify-between items-center mb-3">
-                <label className="flex items-center gap-2 text-sm font-black text-slate-700 uppercase tracking-widest">
-                  <UserCheck className="w-4 h-4 text-emerald-600" />
-                  Assign Umpires
-                </label>
-              </div>
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+              <label className="flex items-center gap-2 text-sm font-black text-slate-700 uppercase tracking-widest">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                Assign Officials
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[0, 1].map((i) => (
-                  <div key={i} className="relative flex flex-col gap-2 p-3 bg-white rounded-lg border border-slate-200">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Umpire {i+1}</label>
-                    <select 
-                      value={umpireInputs[i]}
-                      onChange={(e) => updateUmpireName(i, e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-bold outline-none bg-slate-50 focus:border-indigo-500"
-                    >
-                      <option value="">-- Choose Team --</option>
-                      {eligibleUmpireTeams.map(team => (
-                        <option key={team.id} value={team.name} disabled={umpireInputs.includes(team.name) && umpireInputs[i] !== team.name}>
-                          {team.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <select 
+                    key={i}
+                    value={umpireInputs[i]}
+                    onChange={(e) => {
+                      const next = [...umpireInputs];
+                      next[i] = e.target.value;
+                      setUmpireInputs(next);
+                    }}
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-bold outline-none bg-white focus:border-indigo-500 transition-all"
+                  >
+                    <option value="">-- Choose Umpire {i+1} --</option>
+                    {eligibleUmpireTeams.map(team => (
+                      <option key={team.id} value={team.name} disabled={umpireInputs.includes(team.name) && umpireInputs[i] !== team.name}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
                 ))}
               </div>
             </div>
 
-            <div className="flex gap-3">
+            {editingMatch && (
+              <div className="bg-indigo-50/30 p-6 rounded-2xl border-2 border-indigo-100 space-y-4">
+                <div className="flex justify-between items-center">
+                  <label className="flex items-center gap-2 text-sm font-black text-indigo-900 uppercase tracking-widest">
+                    <Edit3 className="w-4 h-4" />
+                    Edit Game Scores
+                  </label>
+                  <button 
+                    type="button" 
+                    onClick={addScoreRow}
+                    className="text-[10px] font-black bg-indigo-600 text-white px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-sm hover:bg-indigo-700 active:scale-95 transition-all"
+                  >
+                    Add Game
+                  </button>
+                </div>
+                
+                {matchScores.length === 0 ? (
+                  <div className="text-center py-4 text-slate-400 text-xs italic font-medium">No games recorded yet.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {matchScores.map((score, idx) => (
+                      <div key={idx} className="flex items-center gap-4 bg-white p-3 rounded-xl border border-indigo-50 shadow-sm animate-in zoom-in-95">
+                        <span className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-black">G{idx+1}</span>
+                        <div className="flex-1 flex items-center justify-center gap-3">
+                          <input 
+                            type="number" 
+                            value={score.team1} 
+                            onChange={(e) => handleScoreChange(idx, 1, e.target.value)}
+                            className="w-16 px-2 py-1.5 border-2 border-slate-100 rounded-lg text-center font-black outline-none focus:border-indigo-500"
+                          />
+                          <span className="text-slate-300 font-bold italic">VS</span>
+                          <input 
+                            type="number" 
+                            value={score.team2} 
+                            onChange={(e) => handleScoreChange(idx, 2, e.target.value)}
+                            className="w-16 px-2 py-1.5 border-2 border-slate-100 rounded-lg text-center font-black outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => removeScoreRow(idx)}
+                          className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-4">
               <button
                 type="submit"
-                className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100"
+                className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-3"
               >
-                Schedule Match
+                <Save className="w-5 h-5" />
+                {editingMatch ? 'Update Match Details' : 'Schedule Match'}
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setIsCreating(false);
-                  setUmpireInputs(['', '']);
-                }}
-                className="px-8 py-3 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-50"
+                onClick={resetForm}
+                className="px-8 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-200 active:scale-95 transition-all"
               >
                 Cancel
               </button>
@@ -246,7 +415,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {sortedMatches.length === 0 && !isCreating && (
+        {sortedMatches.length === 0 && !isCreating && !editingMatch && (
           <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200 shadow-sm">
             <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No matches scheduled yet.</p>
@@ -267,33 +436,36 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
             )}
             
             <div className="p-4 sm:p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 bg-slate-900 text-white px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest mr-1">
-                     <Hash className="w-3 h-3" />
-                     {isAdmin ? (
-                       <input 
-                        type="number" 
-                        value={match.order} 
-                        onChange={(e) => handleUpdateOrder(match.id, parseInt(e.target.value) || 0)}
-                        className="bg-transparent w-8 outline-none border-none focus:ring-0 text-center"
-                       />
-                     ) : (
-                       <span>{match.order}</span>
-                     )}
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-slate-900 text-white px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest mr-1">
+                      <Hash className="w-3 h-3" />
+                      {match.order}
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                      match.status === 'completed' ? 'bg-slate-100 text-slate-600' :
+                      match.status === 'live' ? 'bg-red-600 text-white shadow-sm' :
+                      'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {match.status === 'live' && <Activity className="w-3 h-3 animate-pulse" />}
+                      {match.status}
+                    </span>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
-                    match.status === 'completed' ? 'bg-slate-100 text-slate-600' :
-                    match.status === 'live' ? 'bg-red-600 text-white shadow-sm' :
-                    'bg-emerald-100 text-emerald-700'
-                  }`}>
-                    {match.status === 'live' && <Activity className="w-3 h-3 animate-pulse" />}
-                    {match.status}
-                  </span>
+                  {match.scheduledAt && (
+                    <div className="flex items-center gap-1.5 text-indigo-600">
+                      <Calendar className="w-3 h-3" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">
+                        {new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                   <span className="bg-slate-50 px-2 py-0.5 rounded border border-slate-100">Best of {match.format}</span>
-                   <span className="bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{match.pointsTarget} Points</span>
+                <div className="flex flex-col items-end gap-1.5">
+                  <div className="flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                    <span className="bg-slate-50 px-2 py-0.5 rounded border border-slate-100">Best of {match.format}</span>
+                    <span className="bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{match.pointsTarget} Points</span>
+                  </div>
                 </div>
               </div>
 
@@ -352,17 +524,26 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
             <div className={`px-4 py-3 flex justify-between items-center border-t transition-colors ${
               match.status === 'live' ? 'bg-indigo-50/50 border-indigo-100' : 'bg-slate-50 border-slate-200'
             }`}>
-              {isAdmin ? (
-                <button
-                  onClick={() => handleDeleteMatch(match.id)}
-                  className="text-slate-400 hover:text-red-600 p-2 transition-colors rounded-lg hover:bg-red-50"
-                  title="Delete Tie-up"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              ) : (
-                <div className="w-4"></div>
-              )}
+              <div className="flex gap-1">
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={() => handleStartEditing(match)}
+                      className="text-slate-400 hover:text-indigo-600 p-2 transition-colors rounded-lg hover:bg-indigo-50"
+                      title="Edit Match Details"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteMatch(match.id)}
+                      className="text-slate-400 hover:text-red-600 p-2 transition-colors rounded-lg hover:bg-red-50"
+                      title="Delete Match"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
 
               <div className="flex gap-2">
                 {match.status !== 'completed' && (
@@ -380,17 +561,9 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                 )}
                 {match.status === 'completed' && (
                   <div className="flex items-center gap-2">
-                    {isAdmin && (
-                      <button 
-                        onClick={() => onStart(match.id)}
-                        className="flex items-center gap-1 text-slate-400 hover:text-indigo-600 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded hover:bg-indigo-50"
-                      >
-                        <Edit3 className="w-3 h-3" /> Edit Result
-                      </button>
-                    )}
                     <div className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase tracking-widest px-2 py-2">
                       <Trophy className="w-4 h-4" />
-                      Done
+                      Result Locked
                     </div>
                   </div>
                 )}

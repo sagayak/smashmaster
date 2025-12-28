@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChevronLeft, Swords, Trophy, Activity, History, Hash, UserCheck, Shield, Clock } from 'lucide-react';
+import { ChevronLeft, Swords, Trophy, Activity, History, Hash, UserCheck, Shield, Clock, Calendar } from 'lucide-react';
 import { Team, Match } from '../types';
 
 interface TeamDashboardProps {
@@ -52,6 +52,7 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, onB
         <StatItem label="Matches Played" value={played} color="indigo" icon={<Activity className="w-4 h-4"/>} />
         <StatItem label="Wins" value={won} color="emerald" icon={<Trophy className="w-4 h-4"/>} />
         <StatItem label="Losses" value={lost} color="red" icon={<History className="w-4 h-4"/>} />
+        {/* Fix: changed umpireCount to umpiringCount to match the variable defined above */}
         <StatItem label="Umpiring Duty" value={umpiringCount} color="amber" icon={<UserCheck className="w-4 h-4"/>} />
       </div>
 
@@ -77,8 +78,15 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, onB
               return (
                 <div key={match.id} className="p-5 border border-slate-100 rounded-3xl bg-slate-50/50 flex flex-col justify-between hover:bg-white hover:border-indigo-100 transition-all group">
                    <div className="flex justify-between items-start mb-4">
-                      <div className="bg-slate-900 text-white px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-                        <Hash className="w-2.5 h-2.5" /> Match {match.order}
+                      <div className="flex flex-col gap-1">
+                        <div className="bg-slate-900 text-white px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1 w-fit">
+                          <Hash className="w-2.5 h-2.5" /> Match {match.order}
+                        </div>
+                        {match.scheduledAt && (
+                          <div className="flex items-center gap-1 text-indigo-600 text-[9px] font-black uppercase tracking-widest mt-1">
+                            <Calendar className="w-2.5 h-2.5" /> {new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        )}
                       </div>
                       <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${
                         match.status === 'completed' ? (isWinner ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700') : 'bg-slate-200 text-slate-600'

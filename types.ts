@@ -34,6 +34,7 @@ export interface Match {
   scores: GameScore[]; 
   winnerId?: string;
   createdAt: number;
+  scheduledAt?: number; // Optional timestamp for match date/time
   order: number; 
   umpireNames?: string[]; 
 }
