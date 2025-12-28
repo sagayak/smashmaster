@@ -14,14 +14,21 @@ const supabase = isCloudEnabled ? createClient(supabaseUrl, supabaseKey) : null;
 const toSnakeCasePayload = (obj: any) => {
   const snake: any = {};
   
+  // Common fields
   if (obj.id) snake.id = obj.id;
+  if (obj.createdAt) snake.created_at = new Date(obj.createdAt).toISOString();
+
+  // Tournament fields
   if (obj.name) snake.name = obj.name;
   if (obj.format) snake.format = obj.format;
   if (obj.status) snake.status = obj.status;
-  if (obj.members) snake.members = obj.members;
   if (obj.matchPasscode) snake.match_passcode = obj.matchPasscode;
   
+  // Team fields
   if (obj.tournamentId) snake.tournament_id = obj.tournamentId;
+  if (obj.members) snake.members = obj.members;
+
+  // Match fields
   if (obj.team1Id) snake.team1_id = obj.team1Id;
   if (obj.team2Id) snake.team2_id = obj.team2Id;
   if (obj.winnerId !== undefined) snake.winner_id = obj.winnerId || null;
@@ -50,15 +57,9 @@ const toSnakeCasePayload = (obj: any) => {
   if (obj.umpireNames) {
     snake.umpire_names = Array.isArray(obj.umpireNames) ? obj.umpireNames : [];
   }
-  
-  if (obj.createdAt) {
-    snake.created_at = new Date(obj.createdAt).toISOString();
-  }
 
-  if (obj.scheduledAt) {
-    snake.scheduled_at = new Date(obj.scheduledAt).toISOString();
-  } else {
-    snake.scheduled_at = null;
+  if (Object.prototype.hasOwnProperty.call(obj, 'scheduledAt')) {
+    snake.scheduled_at = obj.scheduledAt ? new Date(obj.scheduledAt).toISOString() : null;
   }
 
   return snake;

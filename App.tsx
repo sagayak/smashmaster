@@ -30,9 +30,11 @@ import Standings from './components/Standings';
 import Dashboard from './components/Dashboard';
 import TournamentSelector from './components/TournamentSelector';
 import TeamDashboard from './components/TeamDashboard';
+import PinModal from './components/PinModal';
+import NavButton from './components/NavButton';
 import { api } from './lib/api';
 
-const ADMIN_PIN = "1218";
+const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || "1218";
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
@@ -58,7 +60,7 @@ const App: React.FC = () => {
       setLoading(true);
       const list = await api.getTournaments();
       setTournaments(list);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch tournaments:", err);
     } finally {
       setLoading(false);
@@ -76,7 +78,7 @@ const App: React.FC = () => {
       setTeams(t);
       setMatches(m);
       setLastSaved(new Date().toLocaleTimeString());
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch data:", err);
     } finally {
       setIsRefreshing(false);
@@ -113,8 +115,9 @@ const App: React.FC = () => {
       setTournaments(prev => [newTournament, ...prev]);
       await api.saveTournament(newTournament);
       await fetchTournaments();
-    } catch (err: any) {
-      alert(`Error creating tournament: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Error creating tournament: ${msg}`);
       fetchTournaments();
     } finally {
       setLoading(false);
@@ -125,8 +128,9 @@ const App: React.FC = () => {
     try {
       await api.updateTournament(updated);
       setTournaments(prev => prev.map(t => t.id === updated.id ? updated : t));
-    } catch (err: any) {
-      alert(`Error updating tournament: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Error updating tournament: ${msg}`);
     }
   };
 
@@ -135,8 +139,9 @@ const App: React.FC = () => {
       await api.deleteTournament(id);
       setTournaments(prev => prev.filter(t => t.id !== id));
       if (selectedTournamentId === id) setSelectedTournamentId(null);
-    } catch (err: any) {
-      alert(`Error deleting tournament: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Error deleting tournament: ${msg}`);
     }
   };
 
@@ -144,8 +149,9 @@ const App: React.FC = () => {
     try {
       await api.updateTeam(updatedTeam);
       fetchData();
-    } catch (err: any) {
-      alert(`Error updating team: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Error updating team: ${msg}`);
     }
   };
 
@@ -153,8 +159,9 @@ const App: React.FC = () => {
     try {
       await api.updateMatch(updatedMatch);
       fetchData();
-    } catch (err: any) {
-      alert(`Error updating match: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Error updating match: ${msg}`);
     }
   };
 
@@ -501,32 +508,5 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCancel }: any) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-    <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-      <div className="flex flex-col items-center text-center mb-6">
-        <div className="bg-indigo-100 p-3 rounded-full mb-4">
-          <Lock className="w-6 h-6 text-indigo-600" />
-        </div>
-        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
-        <p className="text-slate-500 text-sm mt-1">{description || "Enter valid credentials to continue."}</p>
-      </div>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <input autoFocus type="password" value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="Passcode" className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black" />
-        <div className="flex gap-3">
-          <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">Enter</button>
-          <button type="button" onClick={onCancel} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
-        </div>
-      </form>
-    </div>
-  </div>
-);
-
-const NavButton = ({ active, icon, label, onClick }: any) => (
-  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium whitespace-nowrap ${active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'}`}>
-    {icon} <span className="hidden sm:inline">{label}</span>
-  </button>
-);
 
 export default App;
