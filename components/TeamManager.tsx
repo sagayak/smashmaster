@@ -1,21 +1,23 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Users, UserPlus, X, Lock } from 'lucide-react';
-import { Team } from '../types';
+import { Plus, Trash2, Users, UserPlus, X, Lock, ExternalLink, Activity, Trophy, Clock, UserCheck, History, BarChart3, Play } from 'lucide-react';
+import { Team, Match } from '../types';
 
 interface TeamManagerProps {
   teams: Team[];
+  matches: Match[];
   tournamentId: string;
   onAdd: (team: Team) => void;
   onRemove: (id: string) => void;
+  onSelectTeam: (id: string) => void;
   isAdmin: boolean;
   onAdminLogin: () => void;
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, onRemove, isAdmin, onAdminLogin }) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId, onAdd, onRemove, onSelectTeam, isAdmin, onAdminLogin }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
-  const [members, setMembers] = useState<string[]>(['', '', '']); // Default 3 members
+  const [members, setMembers] = useState<string[]>(['', '', '']); 
 
   const handleAddMember = () => {
     if (members.length < 4) {
@@ -35,7 +37,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, o
     setMembers(updated);
   };
 
-  const handleDeleteTeam = (id: string, name: string) => {
+  const handleDeleteTeam = (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (window.confirm(`Are you sure you want to delete the team "${name}"? This will also remove them from the standings.`)) {
       onRemove(id);
     }
@@ -47,12 +50,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, o
     if (!newTeamName.trim()) return;
     
     const validMembers = members.filter(m => m.trim() !== '');
-    if (validMembers.length < 2) {
-      alert("Please add at least 2 members");
+    if (validMembers.length < 1) {
+      alert("Please add at least 1 member");
       return;
     }
 
-    // Fixed: Added tournamentId to team object
     onAdd({
       id: crypto.randomUUID(),
       tournamentId,
@@ -65,12 +67,26 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, o
     setIsAdding(false);
   };
 
+  // Stats calculation logic for the table
+  const calculateTeamStats = (team: Team) => {
+    const teamMatches = matches.filter(m => m.team1Id === team.id || m.team2Id === team.id);
+    const scheduled = teamMatches.filter(m => m.status === 'scheduled' || m.status === 'live').length;
+    const played = teamMatches.filter(m => m.status === 'completed').length;
+    const won = teamMatches.filter(m => m.status === 'completed' && m.winnerId === team.id).length;
+    const lost = played - won;
+    const umpiringCount = matches.filter(m => 
+      m.umpireNames?.some(name => name.trim().toLowerCase() === team.name.trim().toLowerCase())
+    ).length;
+
+    return { scheduled, played, won, lost, umpiringCount };
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Teams ({teams.length})</h2>
-          <p className="text-slate-500">Manage participating teams</p>
+          <p className="text-slate-500">Manage participants and review performance summaries</p>
         </div>
         {isAdmin ? (
           <button
@@ -108,7 +124,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, o
             
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-semibold text-slate-700">Members (Min 2, Max 4)</label>
+                <label className="block text-sm font-semibold text-slate-700">Members (Min 1, Max 4)</label>
                 {members.length < 4 && (
                   <button 
                     type="button" 
@@ -129,7 +145,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, o
                       onChange={(e) => updateMember(idx, e.target.value)}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg pr-10 focus:ring-1 focus:ring-indigo-500 outline-none"
                     />
-                    {members.length > 2 && (
+                    {members.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveMemberSlot(idx)}
@@ -162,31 +178,28 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, o
         </div>
       )}
 
+      {/* Team Cards Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {teams.length === 0 && !isAdding && (
           <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200">
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No teams added yet.</p>
-            {isAdmin ? (
+            {isAdmin && (
               <button 
                 onClick={() => setIsAdding(true)}
                 className="mt-4 text-indigo-600 font-semibold hover:underline"
               >
                 Start by adding your first team
               </button>
-            ) : (
-              <button 
-                onClick={onAdminLogin}
-                className="mt-4 text-indigo-600 font-semibold hover:underline"
-              >
-                Login as Admin to add teams
-              </button>
             )}
           </div>
         )}
 
         {teams.map((team) => (
-          <div key={team.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all group">
+          <div 
+            key={team.id} 
+            className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all group relative"
+          >
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">
@@ -203,8 +216,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, o
               </div>
               {isAdmin && (
                 <button
-                  onClick={() => handleDeleteTeam(team.id, team.name)}
-                  className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-red-50"
+                  onClick={(e) => handleDeleteTeam(team.id, team.name, e)}
+                  className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -223,6 +236,87 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, tournamentId, onAdd, o
           </div>
         ))}
       </div>
+
+      {/* New Summary Statistics Table Section */}
+      {teams.length > 0 && (
+        <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+               <div className="flex items-center gap-3">
+                 <div className="bg-indigo-600 p-2 rounded-xl">
+                   <BarChart3 className="w-5 h-5 text-white" />
+                 </div>
+                 <div>
+                   <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Performance Summary</h3>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">Global metrics for all participants</p>
+                 </div>
+               </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80">
+                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Team Name</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">
+                      <div className="flex items-center justify-center gap-1.5"><Clock className="w-3 h-3"/> Scheduled</div>
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">
+                      <div className="flex items-center justify-center gap-1.5"><Play className="w-3 h-3"/> Played</div>
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">
+                      <div className="flex items-center justify-center gap-1.5"><Trophy className="w-3 h-3"/> Wins</div>
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">
+                      <div className="flex items-center justify-center gap-1.5"><History className="w-3 h-3"/> Losses</div>
+                    </th>
+                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">
+                      <div className="flex items-center justify-center gap-1.5"><UserCheck className="w-3 h-3"/> Umpiring</div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {teams.map((team) => {
+                    const stats = calculateTeamStats(team);
+                    return (
+                      <tr key={team.id} className="hover:bg-indigo-50/30 transition-colors">
+                        <td className="px-8 py-4">
+                          <div className="font-bold text-slate-900">{team.name}</div>
+                          <div className="text-[10px] text-slate-400 font-medium">Tournament ID: {team.id.split('-')[0]}</div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                           <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-black tabular-nums">{stats.scheduled}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                           <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-black tabular-nums">{stats.played}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                           <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-black tabular-nums">{stats.won}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center text-slate-400 text-xs font-bold tabular-nums">
+                           {stats.lost}
+                        </td>
+                        <td className="px-8 py-4 text-center">
+                           <div className="flex items-center justify-center gap-1.5">
+                             <span className={`px-3 py-1 rounded-full text-xs font-black tabular-nums ${
+                               stats.umpiringCount > 0 ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-slate-50 text-slate-300'
+                             }`}>
+                               {stats.umpiringCount} Duty
+                             </span>
+                           </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 bg-slate-50/50 border-t border-slate-100 text-center">
+               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Note: Umpiring count includes every time this team was assigned as an official.</p>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

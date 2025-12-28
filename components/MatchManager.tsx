@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Swords, Play, Trash2, Calendar, Trophy, Zap, Activity, Lock, Edit3, Hash, UserCheck, X, UserPlus } from 'lucide-react';
+import { Plus, Swords, Play, Trash2, Calendar, Trophy, Zap, Activity, Lock, Edit3, Hash, UserCheck, X, UserPlus, ChevronDown } from 'lucide-react';
 import { Team, Match } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
 import { api } from '../lib/api';
@@ -24,7 +24,6 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
   const [pointsTarget, setPointsTarget] = useState<15 | 21 | 30>(21);
   const [umpireInputs, setUmpireInputs] = useState<string[]>(['']);
 
-  // Sorting matches by order primarily
   const sortedMatches = [...matches].sort((a, b) => {
     if (a.order !== b.order) return a.order - b.order;
     return b.createdAt - a.createdAt;
@@ -54,7 +53,6 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       return;
     }
 
-    // Calculate next order number
     const nextOrder = matches.length > 0 
       ? Math.max(...matches.map(m => m.order || 0)) + 1 
       : 1;
@@ -217,29 +215,38 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                     onClick={handleAddUmpireSlot}
                     className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
                   >
-                    <UserPlus className="w-3 h-3" /> Add Umpire
+                    <UserPlus className="w-3 h-3" /> Add Slot
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {umpireInputs.map((u, i) => (
-                  <div key={i} className="relative">
+                  <div key={i} className="relative flex flex-col gap-2 p-3 bg-white rounded-lg border border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <select 
+                        value={teams.some(t => t.name === u) ? u : "custom"}
+                        onChange={(e) => {
+                          if (e.target.value === "custom") updateUmpireName(i, "");
+                          else updateUmpireName(i, e.target.value);
+                        }}
+                        className="flex-1 px-3 py-1.5 border border-slate-200 rounded text-xs font-bold outline-none bg-slate-50"
+                      >
+                        <option value="custom">-- Choose Team or Custom --</option>
+                        {teams.filter(t => t.id !== team1Id && t.id !== team2Id).map(team => (
+                          <option key={team.id} value={team.name}>{team.name} (Team)</option>
+                        ))}
+                      </select>
+                      {umpireInputs.length > 1 && (
+                        <button type="button" onClick={() => handleRemoveUmpireSlot(i)} className="text-slate-300 hover:text-red-500"><X className="w-4 h-4"/></button>
+                      )}
+                    </div>
                     <input
                       type="text"
-                      placeholder={`Umpire Name ${i+1}`}
+                      placeholder={`Name or selection above...`}
                       value={u}
                       onChange={(e) => updateUmpireName(i, e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 outline-none text-sm font-medium pr-10"
+                      className="w-full px-3 py-2 border border-slate-100 rounded focus:ring-1 focus:ring-indigo-500 outline-none text-sm font-medium"
                     />
-                    {umpireInputs.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveUmpireSlot(i)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>
@@ -272,11 +279,6 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
           <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200 shadow-sm">
             <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No matches scheduled yet.</p>
-            {isAdmin ? (
-               <p className="text-slate-400 text-sm">Teams must be created first to schedule a match.</p>
-            ) : (
-               <button onClick={onAdminLogin} className="text-indigo-600 font-semibold hover:underline">Login to setup tie-ups</button>
-            )}
           </div>
         )}
 
@@ -388,9 +390,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                   <Trash2 className="w-4 h-4" />
                 </button>
               ) : (
-                <button onClick={onAdminLogin} className="p-2 text-slate-300 hover:text-indigo-600" title="Admin only can delete">
-                   <Lock className="w-4 h-4" />
-                </button>
+                <div className="w-4"></div>
               )}
 
               <div className="flex gap-2">
@@ -428,13 +428,6 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
           </div>
         ))}
       </div>
-      
-      <style>{`
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 200% 50%; }
-        }
-      `}</style>
     </div>
   );
 };

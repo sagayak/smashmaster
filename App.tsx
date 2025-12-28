@@ -29,6 +29,7 @@ import MatchScorer from './components/MatchScorer';
 import Standings from './components/Standings';
 import Dashboard from './components/Dashboard';
 import TournamentSelector from './components/TournamentSelector';
+import TeamDashboard from './components/TeamDashboard';
 import { api } from './lib/api';
 
 const ADMIN_PIN = "1218";
@@ -37,6 +38,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -160,8 +162,11 @@ const App: React.FC = () => {
       setShowScorerModal(false);
       setPinInput("");
       
-      // If we were trying to start a match, show umpire modal now
-      if (activeMatchId) setShowUmpireModal(true);
+      const match = matches.find(m => m.id === activeMatchId);
+      if (match) {
+        setUmpireInput(match.umpireNames && match.umpireNames.length > 0 ? [...match.umpireNames] : [""]);
+        setShowUmpireModal(true);
+      }
     } else {
       alert("Incorrect Scorer Passcode");
       setPinInput("");
@@ -174,7 +179,7 @@ const App: React.FC = () => {
     if (!match) return;
 
     const umpires = umpireInput.filter(u => u.trim() !== "");
-    const updatedMatch: Match = { ...match, umpireNames: umpires };
+    const updatedMatch: Match = { ...match, umpireNames: umpires.length > 0 ? umpires : undefined };
     
     await api.updateMatch(updatedMatch);
     setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
@@ -194,9 +199,8 @@ const App: React.FC = () => {
     const match = matches.find(m => m.id === id);
     setActiveMatchId(id);
     
-    // Pre-fill existing umpires if any
     if (match?.umpireNames && match.umpireNames.length > 0) {
-      setUmpireInput(match.umpireNames);
+      setUmpireInput([...match.umpireNames]);
     } else {
       setUmpireInput([""]);
     }
@@ -216,6 +220,8 @@ const App: React.FC = () => {
         teamName: team.name,
         wins: 0,
         losses: 0,
+        gamesWon: 0,
+        gamesLost: 0,
         pointsFor: 0,
         pointsAgainst: 0,
         pointDiff: 0
@@ -226,6 +232,7 @@ const App: React.FC = () => {
       const t1 = stats[match.team1Id];
       const t2 = stats[match.team2Id];
       if (!t1 || !t2) return;
+      
       if (match.winnerId === match.team1Id) {
         t1.wins += 1;
         t2.losses += 1;
@@ -233,18 +240,37 @@ const App: React.FC = () => {
         t2.wins += 1;
         t1.losses += 1;
       }
+
+      let t1GW = 0;
+      let t2GW = 0;
+      
       match.scores.forEach(game => {
+        if (game.team1 > game.team2) t1GW++;
+        else if (game.team2 > game.team1) t2GW++;
+
         t1.pointsFor += (game.team1 || 0);
         t1.pointsAgainst += (game.team2 || 0);
         t2.pointsFor += (game.team2 || 0);
         t2.pointsAgainst += (game.team1 || 0);
       });
+
+      // Special rule: Bo3 won 2-0 counts as 3-0 in sets for standings
+      if (match.format === 3) {
+        if (t1GW === 2 && t2GW === 0) t1GW = 3;
+        else if (t2GW === 2 && t1GW === 0) t2GW = 3;
+      }
+
+      t1.gamesWon += t1GW;
+      t1.gamesLost += t2GW;
+      t2.gamesWon += t2GW;
+      t2.gamesLost += t1GW;
     });
 
     return Object.values(stats)
       .map(s => ({ ...s, pointDiff: s.pointsFor - s.pointsAgainst }))
       .sort((a, b) => {
         if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.gamesWon !== a.gamesWon) return b.gamesWon - a.gamesWon;
         return b.pointDiff - a.pointDiff;
       });
   }, [teams, matches]);
@@ -253,6 +279,11 @@ const App: React.FC = () => {
   const top4 = standings.slice(0, 4);
   const activeMatch = matches.find(m => m.id === activeMatchId);
   const currentTournament = tournaments.find(t => t.id === selectedTournamentId);
+
+  const handleSelectTeamForDashboard = (teamId: string) => {
+    setSelectedTeamId(teamId);
+    setView('team-dashboard');
+  };
 
   if (!selectedTournamentId && !loading) {
     return (
@@ -303,7 +334,7 @@ const App: React.FC = () => {
 
             <nav className="flex items-center gap-1 sm:gap-4">
               <NavButton active={view === 'dashboard'} icon={<BarChart3 className="w-4 h-4" />} label="Home" onClick={() => setView('dashboard')} />
-              <NavButton active={view === 'teams'} icon={<Users className="w-4 h-4" />} label="Teams" onClick={() => setView('teams')} />
+              <NavButton active={view === 'teams' || view === 'team-dashboard'} icon={<Users className="w-4 h-4" />} label="Teams" onClick={() => setView('teams')} />
               <NavButton active={view === 'matches'} icon={<Swords className="w-4 h-4" />} label="Matches" onClick={() => setView('matches')} />
               <NavButton active={view === 'standings'} icon={<Trophy className="w-4 h-4" />} label="Rankings" onClick={() => setView('standings')} />
               <div className="h-6 w-px bg-slate-200 mx-1"></div>
@@ -334,28 +365,42 @@ const App: React.FC = () => {
                 <UserCheck className="w-6 h-6 text-emerald-600" />
               </div>
               <h3 className="text-xl font-bold text-slate-900">Match Officials</h3>
-              <p className="text-slate-500 text-sm mt-1">Identify the umpires for this tie-up.</p>
+              <p className="text-slate-500 text-sm mt-1">Review or assign umpires for this tie-up.</p>
             </div>
             <form onSubmit={handleUmpireSubmit} className="space-y-4">
               <div className="space-y-2">
                 {umpireInput.map((val, i) => (
                   <div key={i} className="relative">
-                    <input 
-                      type="text" 
-                      value={val} 
-                      onChange={(e) => {
-                        const next = [...umpireInput];
-                        next[i] = e.target.value;
-                        setUmpireInput(next);
-                      }} 
-                      placeholder={`Umpire Name ${i+1}`}
-                      className="w-full px-4 py-2 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-bold"
-                    />
+                    <div className="flex flex-col gap-1">
+                      <select 
+                        value={teams.some(t => t.name === val) ? val : "Custom"}
+                        onChange={(e) => {
+                          const next = [...umpireInput];
+                          next[i] = e.target.value === "Custom" ? "" : e.target.value;
+                          setUmpireInput(next);
+                        }}
+                        className="w-full px-4 py-2 border-2 border-slate-100 rounded-xl bg-slate-50 text-sm font-bold outline-none mb-1"
+                      >
+                        <option value="Custom">Custom Name / Official</option>
+                        {teams.map(t => <option key={t.id} value={t.name}>{t.name} (Team)</option>)}
+                      </select>
+                      <input 
+                        type="text" 
+                        value={val} 
+                        onChange={(e) => {
+                          const next = [...umpireInput];
+                          next[i] = e.target.value;
+                          setUmpireInput(next);
+                        }} 
+                        placeholder={`Enter Name or Selection...`}
+                        className="w-full px-4 py-2 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-bold"
+                      />
+                    </div>
                     {umpireInput.length > 1 && (
                       <button 
                         type="button" 
                         onClick={() => setUmpireInput(umpireInput.filter((_, idx) => idx !== i))}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500"
+                        className="absolute right-2 top-2 text-slate-300 hover:text-red-500"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -372,9 +417,17 @@ const App: React.FC = () => {
                   </button>
                 )}
               </div>
-              <div className="flex gap-3">
-                <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">Go to Court</button>
-                <button type="button" onClick={() => setShowUmpireModal(false)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200">Skip</button>
+              <div className="flex flex-col gap-2">
+                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg active:scale-95 transition-all">
+                  Proceed to Scoreboard
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowUmpireModal(false); setView('scorer'); }} 
+                  className="w-full bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all"
+                >
+                  Skip & Start
+                </button>
               </div>
             </form>
           </div>
@@ -396,7 +449,7 @@ const App: React.FC = () => {
             onUpdateTournament={handleUpdateTournament}
           />
         )}
-        {view === 'teams' && <TeamManager teams={teams} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
         {view === 'matches' && <MatchManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); setView('matches'); }} onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} onStart={handleStartMatchRequested} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
         {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={async (m) => { await api.updateMatch(m); fetchData(); }} onFinish={() => setView('matches')} />}
         {view === 'standings' && (
@@ -406,6 +459,15 @@ const App: React.FC = () => {
             const nm: Match = { id: crypto.randomUUID(), tournamentId: selectedTournamentId!, team1Id: t1, team2Id: t2, status: 'scheduled', format: 3, pointsTarget: 21, currentGame: 0, scores: [], createdAt: Date.now(), order: nextOrder };
             api.saveMatch(nm).then(() => fetchData());
           }} />
+        )}
+        {view === 'team-dashboard' && selectedTeamId && (
+          <TeamDashboard 
+            team={teams.find(t => t.id === selectedTeamId)!} 
+            matches={matches} 
+            teams={teams}
+            onBack={() => setView('teams')}
+            onStartMatch={handleStartMatchRequested}
+          />
         )}
       </main>
 

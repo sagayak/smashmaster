@@ -5,7 +5,7 @@ export interface Tournament {
   format: 'League' | 'Knockout';
   createdAt: number;
   status: 'active' | 'archived';
-  matchPasscode?: string; // New field for scorer access
+  matchPasscode?: string;
 }
 
 export interface Team {
@@ -34,8 +34,8 @@ export interface Match {
   scores: GameScore[]; 
   winnerId?: string;
   createdAt: number;
-  order: number; // For sequencing matches
-  umpireNames?: string[]; // New field for match officials
+  order: number; 
+  umpireNames?: string[]; 
 }
 
 export interface StandingsEntry {
@@ -43,9 +43,11 @@ export interface StandingsEntry {
   teamName: string;
   wins: number;
   losses: number;
+  gamesWon: number;
+  gamesLost: number;
   pointsFor: number;
   pointsAgainst: number;
   pointDiff: number;
 }
 
-export type ViewState = 'dashboard' | 'teams' | 'matches' | 'scorer' | 'standings';
+export type ViewState = 'dashboard' | 'teams' | 'matches' | 'scorer' | 'standings' | 'team-dashboard';
