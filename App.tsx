@@ -448,6 +448,7 @@ const App: React.FC = () => {
             teams={teams} matches={matches} standings={standings} onNavigate={setView} onReset={() => setSelectedTournamentId(null)}
             isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} tournament={currentTournament}
             onUpdateTournament={handleUpdateTournament}
+            onSelectTeam={handleSelectTeamForDashboard}
           />
         )}
         {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onUpdate={handleUpdateTeam} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
@@ -466,12 +467,18 @@ const App: React.FC = () => {
         )}
         {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={async (m) => { await api.updateMatch(m); fetchData(); }} onFinish={() => setView('matches')} />}
         {view === 'standings' && (
-          <Standings standings={standings} top4={top4} isAdmin={isAdmin} onAddTieUp={(t1, t2) => {
-            if(!isAdmin) return setShowPinModal(true);
-            const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;
-            const nm: Match = { id: crypto.randomUUID(), tournamentId: selectedTournamentId!, team1Id: t1, team2Id: t2, status: 'scheduled', format: 3, pointsTarget: 21, currentGame: 0, scores: [], createdAt: Date.now(), order: nextOrder };
-            api.saveMatch(nm).then(() => fetchData());
-          }} />
+          <Standings 
+            standings={standings} 
+            top4={top4} 
+            isAdmin={isAdmin} 
+            onAddTieUp={(t1, t2) => {
+              if(!isAdmin) return setShowPinModal(true);
+              const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;
+              const nm: Match = { id: crypto.randomUUID(), tournamentId: selectedTournamentId!, team1Id: t1, team2Id: t2, status: 'scheduled', format: 3, pointsTarget: 21, currentGame: 0, scores: [], createdAt: Date.now(), order: nextOrder };
+              api.saveMatch(nm).then(() => fetchData());
+            }} 
+            onSelectTeam={handleSelectTeamForDashboard}
+          />
         )}
         {view === 'team-dashboard' && selectedTeamId && (
           <TeamDashboard 

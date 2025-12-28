@@ -1,16 +1,17 @@
 
 import React, { useState } from 'react';
-import { Trophy, Medal, Swords, Star, Lock, Zap, ChevronRight, CheckCircle2, X } from 'lucide-react';
+import { Trophy, Medal, Swords, Star, Lock, Zap, ChevronRight, CheckCircle2, X, ArrowRight } from 'lucide-react';
 import { StandingsEntry } from '../types';
 
 interface StandingsProps {
   standings: StandingsEntry[];
   top4: StandingsEntry[];
   onAddTieUp: (team1Id: string, team2Id: string) => void;
+  onSelectTeam: (id: string) => void;
   isAdmin: boolean;
 }
 
-const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAdmin }) => {
+const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSelectTeam, isAdmin }) => {
   const [showPlayoffPicker, setShowPlayoffPicker] = useState(false);
   const [selectedT1, setSelectedT1] = useState('');
   const [selectedT2, setSelectedT2] = useState('');
@@ -33,8 +34,12 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
     onAddTieUp(top4[idx1].teamId, top4[idx2].teamId);
   };
 
-  const handleCardClick = (teamId: string) => {
-    if (!isAdmin) return;
+  const handleCardClick = (teamId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!isAdmin) {
+      onSelectTeam(teamId);
+      return;
+    }
     if (!pair1) {
       setPair1(teamId);
     } else if (pair1 === teamId) {
@@ -131,7 +136,6 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
         </div>
       )}
 
-      {/* Standings Table */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -143,7 +147,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Losses</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Pts For</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Diff</th>
-                {isAdmin && <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Action</th>}
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">View</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -153,7 +157,11 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
                 </tr>
               ) : (
                 standings.map((entry, index) => (
-                  <tr key={entry.teamId} className={`hover:bg-slate-50 transition-colors ${index < 4 ? 'bg-indigo-50/20' : ''}`}>
+                  <tr 
+                    key={entry.teamId} 
+                    onClick={() => onSelectTeam(entry.teamId)}
+                    className={`hover:bg-indigo-50 transition-colors cursor-pointer group ${index < 4 ? 'bg-indigo-50/20' : ''}`}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
@@ -169,7 +177,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="font-bold text-slate-900">{entry.teamName}</div>
+                        <div className="font-bold text-slate-900 group-hover:text-indigo-600">{entry.teamName}</div>
                         {index < 4 && (
                           <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border border-emerald-200">
                             <Star className="w-2.5 h-2.5 fill-current" /> Qualified
@@ -191,19 +199,22 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
                         {entry.pointDiff > 0 ? `+${entry.pointDiff}` : entry.pointDiff}
                       </span>
                     </td>
-                    {isAdmin && (
-                      <td className="px-6 py-4 text-center">
-                        {index < 4 && (
-                          <button 
-                            onClick={() => handleCardClick(entry.teamId)}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center gap-2">
+                         {isAdmin && index < 4 && (
+                           <button 
+                            onClick={(e) => handleCardClick(entry.teamId, e)}
                             className={`p-1.5 rounded-lg transition-colors ${pair1 === entry.teamId ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
                             title="Add to Tie-up"
                           >
                             <Swords className="w-4 h-4" />
                           </button>
-                        )}
-                      </td>
-                    )}
+                         )}
+                         <div className="p-1.5 text-slate-300 group-hover:text-indigo-400 transition-colors">
+                            <ArrowRight className="w-4 h-4" />
+                         </div>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -212,9 +223,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
         </div>
       </div>
 
-      {/* Interactive Elite Four Cards */}
       <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-slate-300 relative overflow-hidden">
-        {/* Decorative Background */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
         
         <div className="flex items-start justify-between gap-4 mb-8 relative z-10">
@@ -225,7 +234,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
             <div>
               <h3 className="text-2xl font-black italic tracking-tighter uppercase leading-none mb-1">THE ELITE FOUR</h3>
               <p className="text-slate-400 font-medium text-xs tracking-wide">
-                {isAdmin ? 'Select two teams to create a quick tie-up.' : 'Top ranked contenders eligible for the finals.'}
+                {isAdmin ? 'Select two teams to create a quick tie-up.' : 'Click any contender to view their specific rivalry records.'}
               </p>
             </div>
           </div>
@@ -245,10 +254,8 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
             return (
               <div 
                 key={t.teamId} 
-                onClick={() => handleCardClick(t.teamId)}
-                className={`relative bg-white/5 border-2 rounded-3xl p-6 flex flex-col items-center text-center group transition-all duration-300 ${
-                  isAdmin ? 'cursor-pointer' : ''
-                } ${
+                onClick={() => isAdmin ? handleCardClick(t.teamId) : onSelectTeam(t.teamId)}
+                className={`relative bg-white/5 border-2 rounded-3xl p-6 flex flex-col items-center text-center group transition-all duration-300 cursor-pointer ${
                   isSelected 
                     ? 'border-indigo-500 bg-indigo-500/10 ring-4 ring-indigo-500/20 scale-105' 
                     : 'border-white/10 hover:bg-white/10 hover:border-white/20'
@@ -278,6 +285,12 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, isAd
                 {isAdmin && !isSelected && pair1 && (
                   <div className="mt-4 w-full bg-white text-slate-900 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <Swords className="w-3 h-3" /> VS {top4.find(x => x.teamId === pair1)?.teamName.charAt(0)}
+                  </div>
+                )}
+                
+                {!isAdmin && (
+                  <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-white/30 group-hover:text-white transition-colors">
+                    View Record
                   </div>
                 )}
               </div>

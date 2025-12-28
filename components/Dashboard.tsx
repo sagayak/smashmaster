@@ -13,9 +13,10 @@ interface DashboardProps {
   onAdminLogin: () => void;
   tournament?: Tournament;
   onUpdateTournament: (updated: Tournament) => void;
+  onSelectTeam: (id: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament }) => {
+const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament, onSelectTeam }) => {
   const [copied, setCopied] = useState(false);
   const [showPasscode, setShowPasscode] = useState(false);
   const [newPasscode, setNewPasscode] = useState(tournament?.matchPasscode || '0000');
@@ -68,7 +69,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard icon={<Users className="w-6 h-6 text-indigo-600" />} label="Total Teams" value={teams.length} onClick={() => onNavigate('teams')} color="indigo" />
         <StatCard icon={<Swords className="w-6 h-6 text-emerald-600" />} label="Matches Played" value={matches.length} onClick={() => onNavigate('matches')} color="emerald" />
-        <StatCard icon={<Trophy className="w-6 h-6 text-amber-600" />} label="Leader" value={standings[0]?.teamName || '---'} onClick={() => onNavigate('standings')} color="amber" />
+        <StatCard icon={<Trophy className="w-6 h-6 text-amber-600" />} label="Leader" value={standings[0]?.teamName || '---'} onClick={() => standings[0] ? onSelectTeam(standings[0].teamId) : onNavigate('standings')} color="amber" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -187,7 +188,11 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
             ) : (
               <div className="divide-y divide-slate-100">
                 {standings.slice(0, 4).map((s, i) => (
-                  <div key={s.teamId} className="px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all group">
+                  <div 
+                    key={s.teamId} 
+                    onClick={() => onSelectTeam(s.teamId)}
+                    className="px-8 py-6 flex items-center justify-between hover:bg-indigo-50 transition-all group cursor-pointer"
+                  >
                     <div className="flex items-center gap-5">
                       <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm ${i === 0 ? 'bg-amber-100 text-amber-600 border border-amber-200' : i === 1 ? 'bg-slate-200 text-slate-700' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-500'}`}>
                         {i + 1}
@@ -200,7 +205,10 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                         </div>
                       </div>
                     </div>
-                    {i === 0 && <Trophy className="w-6 h-6 text-amber-400 drop-shadow-sm" />}
+                    <div className="flex items-center gap-2">
+                       {i === 0 && <Trophy className="w-6 h-6 text-amber-400 drop-shadow-sm" />}
+                       <ArrowRight className="w-4 h-4 text-slate-200 group-hover:text-indigo-300 transition-colors" />
+                    </div>
                   </div>
                 ))}
               </div>

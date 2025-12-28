@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Users, UserPlus, X, Lock, ExternalLink, Activity, Trophy, Clock, UserCheck, History, BarChart3, Play, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Users, UserPlus, X, Lock, ExternalLink, Activity, Trophy, Clock, UserCheck, History, BarChart3, Play, Edit2, LayoutDashboard } from 'lucide-react';
 import { Team, Match } from '../types';
 
 interface TeamManagerProps {
@@ -92,7 +92,6 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
     handleCancel();
   };
 
-  // Stats calculation logic for the table
   const calculateTeamStats = (team: Team) => {
     const teamMatches = matches.filter(m => m.team1Id === team.id || m.team2Id === team.id);
     const scheduled = teamMatches.filter(m => m.status === 'scheduled' || m.status === 'live').length;
@@ -204,7 +203,6 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
         </div>
       )}
 
-      {/* Team Cards Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {teams.length === 0 && !isAdding && !editingTeamId && (
           <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200">
@@ -224,7 +222,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
         {teams.map((team) => (
           <div 
             key={team.id} 
-            className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all group relative"
+            onClick={() => onSelectTeam(team.id)}
+            className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-lg hover:border-indigo-300 transition-all group relative cursor-pointer"
           >
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-3">
@@ -240,24 +239,29 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
                   </p>
                 </div>
               </div>
-              {isAdmin && (
-                <div className="flex gap-1">
-                  <button
-                    onClick={(e) => handleStartEditing(team, e)}
-                    className="text-slate-300 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50 transition-colors"
-                    title="Edit Team"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteTeam(team.id, team.name, e)}
-                    className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                    title="Delete Team"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              <div className="flex gap-1">
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={(e) => handleStartEditing(team, e)}
+                      className="text-slate-300 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50 transition-colors"
+                      title="Edit Team"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteTeam(team.id, team.name, e)}
+                      className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                      title="Delete Team"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                <div className="text-slate-300 group-hover:text-indigo-500 p-2 transition-colors">
+                   <LayoutDashboard className="w-4 h-4" />
                 </div>
-              )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {team.members.map((member, i) => (
@@ -273,7 +277,6 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
         ))}
       </div>
 
-      {/* New Summary Statistics Table Section */}
       {teams.length > 0 && (
         <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
@@ -284,7 +287,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
                  </div>
                  <div>
                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Performance Summary</h3>
-                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">Global metrics for all participants</p>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">Click any team to view their detailed rivalry dashboard</p>
                  </div>
                </div>
             </div>
@@ -315,9 +318,13 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
                   {teams.map((team) => {
                     const stats = calculateTeamStats(team);
                     return (
-                      <tr key={team.id} className="hover:bg-indigo-50/30 transition-colors">
+                      <tr 
+                        key={team.id} 
+                        onClick={() => onSelectTeam(team.id)}
+                        className="hover:bg-indigo-50 transition-colors cursor-pointer group"
+                      >
                         <td className="px-8 py-4">
-                          <div className="font-bold text-slate-900">{team.name}</div>
+                          <div className="font-bold text-slate-900 group-hover:text-indigo-600">{team.name}</div>
                           <div className="text-[10px] text-slate-400 font-medium">Tournament ID: {team.id.split('-')[0]}</div>
                         </td>
                         <td className="px-6 py-4 text-center">
