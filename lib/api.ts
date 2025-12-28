@@ -185,6 +185,18 @@ export const api = {
     localStorage.setItem('smashmaster_teams', JSON.stringify([...all, team]));
   },
 
+  async updateTeam(team: Team): Promise<void> {
+    if (supabase) {
+      const payload = toSnakeCasePayload(team);
+      const { error } = await supabase.from('teams').update(payload).eq('id', team.id);
+      if (error) throw error;
+      return;
+    }
+    const local = localStorage.getItem('smashmaster_teams');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_teams', JSON.stringify(all.map((t: any) => t.id === team.id ? team : t)));
+  },
+
   async deleteTeam(id: string): Promise<void> {
     if (supabase) {
       await supabase.from('teams').delete().eq('id', id);

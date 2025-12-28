@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Users, UserPlus, X, Lock, ExternalLink, Activity, Trophy, Clock, UserCheck, History, BarChart3, Play } from 'lucide-react';
+import { Plus, Trash2, Users, UserPlus, X, Lock, ExternalLink, Activity, Trophy, Clock, UserCheck, History, BarChart3, Play, Edit2 } from 'lucide-react';
 import { Team, Match } from '../types';
 
 interface TeamManagerProps {
@@ -8,14 +8,17 @@ interface TeamManagerProps {
   matches: Match[];
   tournamentId: string;
   onAdd: (team: Team) => void;
+  onUpdate: (team: Team) => void;
   onRemove: (id: string) => void;
   onSelectTeam: (id: string) => void;
   isAdmin: boolean;
   onAdminLogin: () => void;
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId, onAdd, onRemove, onSelectTeam, isAdmin, onAdminLogin }) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId, onAdd, onUpdate, onRemove, onSelectTeam, isAdmin, onAdminLogin }) => {
   const [isAdding, setIsAdding] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  
   const [newTeamName, setNewTeamName] = useState('');
   const [members, setMembers] = useState<string[]>(['', '', '']); 
 
@@ -44,6 +47,21 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
     }
   };
 
+  const handleStartEditing = (team: Team, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTeamId(team.id);
+    setNewTeamName(team.name);
+    setMembers([...team.members]);
+    setIsAdding(false);
+  };
+
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingTeamId(null);
+    setNewTeamName('');
+    setMembers(['', '', '']);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
@@ -55,16 +73,23 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
       return;
     }
 
-    onAdd({
-      id: crypto.randomUUID(),
-      tournamentId,
-      name: newTeamName,
-      members: validMembers
-    });
+    if (editingTeamId) {
+      onUpdate({
+        id: editingTeamId,
+        tournamentId,
+        name: newTeamName,
+        members: validMembers
+      });
+    } else {
+      onAdd({
+        id: crypto.randomUUID(),
+        tournamentId,
+        name: newTeamName,
+        members: validMembers
+      });
+    }
 
-    setNewTeamName('');
-    setMembers(['', '', '']);
-    setIsAdding(false);
+    handleCancel();
   };
 
   // Stats calculation logic for the table
@@ -90,7 +115,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
         </div>
         {isAdmin ? (
           <button
-            onClick={() => setIsAdding(true)}
+            onClick={() => { setIsAdding(true); setEditingTeamId(null); setNewTeamName(''); setMembers(['', '', '']); }}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm active:scale-95"
           >
             <Plus className="w-5 h-5" />
@@ -107,8 +132,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
         )}
       </div>
 
-      {isAdding && isAdmin && (
+      {(isAdding || editingTeamId) && isAdmin && (
         <div className="bg-white border border-indigo-100 rounded-xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+          <h3 className="text-lg font-bold text-slate-900 mb-4">{editingTeamId ? 'Edit Team' : 'Add New Team'}</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Team Name</label>
@@ -164,11 +190,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
                 type="submit"
                 className="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 shadow-sm"
               >
-                Create Team
+                {editingTeamId ? 'Save Changes' : 'Create Team'}
               </button>
               <button
                 type="button"
-                onClick={() => setIsAdding(false)}
+                onClick={handleCancel}
                 className="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-50"
               >
                 Cancel
@@ -180,7 +206,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
 
       {/* Team Cards Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {teams.length === 0 && !isAdding && (
+        {teams.length === 0 && !isAdding && !editingTeamId && (
           <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200">
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No teams added yet.</p>
@@ -215,12 +241,22 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
                 </div>
               </div>
               {isAdmin && (
-                <button
-                  onClick={(e) => handleDeleteTeam(team.id, team.name, e)}
-                  className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={(e) => handleStartEditing(team, e)}
+                    className="text-slate-300 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50 transition-colors"
+                    title="Edit Team"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteTeam(team.id, team.name, e)}
+                    className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                    title="Delete Team"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               )}
             </div>
             <div className="flex flex-wrap gap-2">

@@ -140,6 +140,15 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateTeam = async (updatedTeam: Team) => {
+    try {
+      await api.updateTeam(updatedTeam);
+      fetchData();
+    } catch (err: any) {
+      alert(`Error updating team: ${err.message}`);
+    }
+  };
+
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput === ADMIN_PIN) {
@@ -432,7 +441,7 @@ const App: React.FC = () => {
             onUpdateTournament={handleUpdateTournament}
           />
         )}
-        {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onUpdate={handleUpdateTeam} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
         {view === 'matches' && <MatchManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); setView('matches'); }} onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} onStart={handleStartMatchRequested} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
         {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={async (m) => { await api.updateMatch(m); fetchData(); }} onFinish={() => setView('matches')} />}
         {view === 'standings' && (
