@@ -79,6 +79,7 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
   ).length;
 
   const getTeamName = (id: string) => teams.find(t => t.id === id)?.name || 'Deleted Team';
+  const getTeamMembers = (id: string) => teams.find(t => t.id === id)?.members || [];
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -255,9 +256,11 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  {remainingMatches.map(match => {
                    const isTeam1 = match.team1Id === team.id;
-                   const opponentName = getTeamName(isTeam1 ? match.team2Id : match.team1Id);
+                   const opponentId = isTeam1 ? match.team2Id : match.team1Id;
+                   const opponentName = getTeamName(opponentId);
+                   const opponentMembers = getTeamMembers(opponentId);
                    return (
-                     <div key={match.id} className="p-6 border border-slate-100 rounded-[2rem] bg-slate-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-lg transition-all group">
+                     <div key={match.id} className="p-6 border border-slate-100 rounded-[2rem] bg-slate-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-lg transition-all group flex flex-col h-full">
                         <div className="flex justify-between items-start mb-4">
                            <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
                               <Hash className="w-3 h-3" /> Match #{match.order}
@@ -274,11 +277,28 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                               <div className="font-black text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">{opponentName}</div>
                            </div>
                         </div>
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+
+                        {/* Opponent Members Display */}
+                        <div className="mb-6">
+                           <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                              <Users className="w-3 h-3" /> Opponent Squad
+                           </div>
+                           <div className="flex flex-wrap gap-1.5">
+                              {opponentMembers.length > 0 ? opponentMembers.map((m, i) => (
+                                <span key={i} className="bg-white border border-slate-100 text-slate-500 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight shadow-sm">
+                                  {m}
+                                </span>
+                              )) : (
+                                <span className="text-[9px] text-slate-400 italic font-medium">No members listed</span>
+                              )}
+                           </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
                            <div className="flex items-center gap-2 text-indigo-600">
                               <Clock className="w-3.5 h-3.5" />
                               <span className="text-[10px] font-black uppercase tracking-widest">
-                                {match.scheduledAt ? new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}
+                                {match.scheduledAt ? new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : 'TBD'}
                               </span>
                            </div>
                            <button onClick={() => onStartMatch(match.id)} className="text-indigo-600 hover:text-indigo-800 font-black text-[10px] uppercase tracking-widest flex items-center gap-1">
@@ -321,6 +341,11 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                               {isWinner ? 'Victory' : 'Defeat'}
                            </span>
                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Match #{match.order}</span>
+                           {match.scheduledAt && (
+                              <span className="text-[8px] text-slate-300 font-bold uppercase mt-1">
+                                {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </span>
+                           )}
                         </div>
 
                         <div className="flex-1 flex items-center justify-center gap-8 text-center">

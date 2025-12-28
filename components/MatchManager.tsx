@@ -456,7 +456,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                     <div className="flex items-center gap-1.5 text-indigo-600">
                       <Calendar className="w-3 h-3" />
                       <span className="text-[10px] font-black uppercase tracking-widest">
-                        {new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </span>
                     </div>
                   )}

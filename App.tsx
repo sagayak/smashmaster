@@ -43,7 +43,7 @@ const App: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
-  const [lastSaved, setLastSaved] = useState<string>(new Date().toLocaleTimeString());
+  const [lastSaved, setLastSaved] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isScorer, setIsScorer] = useState<boolean>(false);
   const [showPinModal, setShowPinModal] = useState<boolean>(false);
@@ -75,7 +75,7 @@ const App: React.FC = () => {
       ]);
       setTeams(t);
       setMatches(m);
-      setLastSaved(new Date().toLocaleTimeString());
+      setLastSaved(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
     } catch (err: any) {
       console.error("Failed to fetch data:", err);
     } finally {
@@ -511,7 +511,7 @@ const App: React.FC = () => {
 
 const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCancel }: any) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-    <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="bg-white rounded-2xl p-8 max-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
       <div className="flex flex-col items-center text-center mb-6">
         <div className="bg-indigo-100 p-3 rounded-full mb-4">
           <Lock className="w-6 h-6 text-indigo-600" />
