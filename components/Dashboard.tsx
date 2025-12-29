@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save, Medal, Settings2, Sparkles, X } from 'lucide-react';
+import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save, Medal, Settings2, Sparkles, X, CheckCircle2 } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament } from '../types';
 import { GoogleGenAI } from "@google/genai";
 
@@ -26,6 +26,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
   
   const [quickTeamName, setQuickTeamName] = useState('');
   const [isAddingQuick, setIsAddingQuick] = useState(false);
+  const [lastAddedTeam, setLastAddedTeam] = useState<string | null>(null);
 
   const activeMatches = matches.filter(m => m.status === 'live');
 
@@ -45,29 +46,29 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     e.preventDefault();
     if (!quickTeamName.trim() || !tournament) return;
     
+    const teamName = quickTeamName.trim();
     onAddTeam({
       id: crypto.randomUUID(),
       tournamentId: tournament.id,
-      name: quickTeamName.trim(),
+      name: teamName,
       members: ['Player 1', 'Player 2']
     });
     
+    setLastAddedTeam(teamName);
     setQuickTeamName('');
-    setIsAddingQuick(false);
+    // Notice: We don't call setIsAddingQuick(false) so user can add "again and again"
+    setTimeout(() => setLastAddedTeam(null), 3000);
   };
 
-  // Fixed GoogleGenAI initialization and response handling
   const generateMotto = async () => {
     if (!tournament) return;
     setIsGeneratingMotto(true);
     try {
-      // Create a new GoogleGenAI instance right before making an API call to ensure it uses the current key.
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Create a short, catchy, and inspiring 1-sentence motto for a badminton tournament named "${tournament.name}". Return only the motto text, no quotes or explanations.`,
       });
-      // response.text is a property, not a method.
       setTournamentMotto(response.text?.trim() || null);
     } catch (err) {
       console.error("AI Error:", err);
@@ -129,11 +130,11 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
           </button>
           {isAdmin && (
             <button 
-              onClick={() => setIsAddingQuick(true)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 active:scale-95"
+              onClick={() => setIsAddingQuick(!isAddingQuick)}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl active:scale-95 ${isAddingQuick ? 'bg-slate-800 text-white' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100'}`}
             >
-              <Plus className="w-4 h-4" />
-              Add Teams
+              {isAddingQuick ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {isAddingQuick ? 'Close Add' : 'Add Teams'}
             </button>
           )}
         </div>
@@ -146,11 +147,17 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
               <div className="bg-white/20 p-2 rounded-xl">
                 <Users className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tight">Quick Add Team</h3>
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tight">Quick Add Teams</h3>
+                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest">Type a name and press enter to add another</p>
+              </div>
             </div>
-            <button onClick={() => setIsAddingQuick(false)} className="text-white/50 hover:text-white transition-colors">
-              <X className="w-6 h-6" />
-            </button>
+            {lastAddedTeam && (
+              <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-xl animate-in fade-in slide-in-from-right-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold">Added "{lastAddedTeam}"</span>
+              </div>
+            )}
           </div>
           <form onSubmit={handleQuickAddSubmit} className="flex flex-col sm:flex-row gap-4">
             <input 
@@ -162,7 +169,8 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
               onChange={(e) => setQuickTeamName(e.target.value)}
               className="flex-1 bg-white/10 border-2 border-white/20 rounded-2xl px-6 py-4 text-white placeholder:text-white/40 font-bold text-lg outline-none focus:border-white transition-all"
             />
-            <button type="submit" className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-50 transition-all active:scale-95">
+            <button type="submit" className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center gap-2">
+              <Plus className="w-4 h-4" />
               Save Team
             </button>
           </form>
