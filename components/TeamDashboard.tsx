@@ -71,7 +71,8 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
     return acc;
   }, {} as Record<string, { opponentName: string, wins: number, losses: number, matches: Match[] }>);
 
-  const h2hList = Object.values(h2hStats);
+  // Fix: Explicitly cast Object.values to the expected type to resolve 'unknown' type error in map
+  const h2hList = Object.values(h2hStats) as { opponentName: string, wins: number, losses: number, matches: Match[] }[];
 
   // Calculate umpiring count
   const umpiringCount = matches.filter(m => 
@@ -218,7 +219,8 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                       <div className="space-y-2">
                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Score History</div>
                          <div className="flex flex-wrap gap-2">
-                           {stat.matches.map(m => {
+                           {/* Fix: Explicitly typed 'm' as Match to resolve type error */}
+                           {stat.matches.map((m: Match) => {
                              const isTeam1 = m.team1Id === team.id;
                              return m.scores.map((s, idx) => (
                                <span key={`${m.id}-${idx}`} className="bg-slate-100 px-2 py-1 rounded text-[10px] font-bold text-slate-600 border border-slate-200">
