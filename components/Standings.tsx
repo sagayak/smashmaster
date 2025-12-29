@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Trophy, Medal, Swords, Star, Lock, Zap, ChevronRight, CheckCircle2, X, ArrowRight } from 'lucide-react';
+import { Trophy, Medal, Swords, Star, Lock, Zap, ChevronRight, CheckCircle2, X, ArrowRight, LayoutList, Activity } from 'lucide-react';
 import { StandingsEntry } from '../types';
 
 interface StandingsProps {
@@ -54,8 +54,8 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
     <div className="space-y-8 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Leaderboard</h2>
-          <p className="text-slate-500">Ranked by Wins, then Point Difference</p>
+          <h2 className="text-2xl font-bold text-slate-900">Tournament Standings</h2>
+          <p className="text-slate-500 font-medium">Ranked by Wins, then Sets (Games), then Point Difference</p>
         </div>
         
         {top4.length >= 2 && (
@@ -67,7 +67,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
               }`}
             >
               <Swords className="w-5 h-5" />
-              {showPlayoffPicker ? 'Close Playoff Panel' : 'Schedule Playoff Match'}
+              {showPlayoffPicker ? 'Close Panel' : 'Schedule Playoff'}
             </button>
           ) : (
             <div className="flex items-center gap-2 text-slate-400 bg-slate-100 px-4 py-2 rounded-lg font-bold text-sm">
@@ -142,18 +142,18 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Rank</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Team</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Wins</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Losses</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Pts For</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Diff</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Team Name</th>
+                <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Match W-L</th>
+                <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Game Wins (Sets)</th>
+                <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Points For</th>
+                <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Diff</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">View</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {standings.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium">No results available yet.</td>
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium">No tournament data available yet.</td>
                 </tr>
               ) : (
                 standings.map((entry, index) => (
@@ -165,9 +165,9 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
-                          index === 0 ? 'bg-amber-100 text-amber-600 border border-amber-200' :
-                          index === 1 ? 'bg-slate-200 text-slate-600' :
-                          index === 2 ? 'bg-orange-100 text-orange-600' :
+                          index === 0 ? 'bg-amber-100 text-amber-600 border border-amber-200 shadow-sm' :
+                          index === 1 ? 'bg-slate-100 text-slate-600' :
+                          index === 2 ? 'bg-orange-50 text-orange-600' :
                           'text-slate-400'
                         }`}>
                           {index + 1}
@@ -177,21 +177,36 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="font-bold text-slate-900 group-hover:text-indigo-600">{entry.teamName}</div>
+                        <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{entry.teamName}</div>
                         {index < 4 && (
                           <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border border-emerald-200">
-                            <Star className="w-2.5 h-2.5 fill-current" /> Qualified
+                            <Star className="w-2.5 h-2.5 fill-current" /> Top 4
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="font-black text-slate-900">{entry.wins}</span>
+                    <td className="px-4 py-4 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="font-black text-slate-900 text-sm">{entry.wins}W - {entry.losses}L</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Tie-ups</span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-center text-slate-500 text-sm">{entry.losses}</td>
-                    <td className="px-6 py-4 text-center text-slate-500 text-sm">{entry.pointsFor}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`font-bold px-2 py-1 rounded-full text-xs ${
+                    <td className="px-4 py-4 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="font-black text-indigo-600 text-sm bg-indigo-50 px-3 py-0.5 rounded-full border border-indigo-100">
+                          {entry.gamesWon} - {entry.gamesLost}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Sets (Games)</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="font-bold text-slate-600 text-xs tabular-nums">{entry.pointsFor}</span>
+                        <span className="text-[8px] font-bold text-slate-300 uppercase">Scored</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <span className={`font-bold px-2 py-1 rounded-full text-xs tabular-nums ${
                         entry.pointDiff > 0 ? 'bg-emerald-100 text-emerald-700' : 
                         entry.pointDiff < 0 ? 'bg-red-100 text-red-700' : 
                         'bg-slate-100 text-slate-600'
@@ -201,15 +216,6 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center gap-2">
-                         {isAdmin && index < 4 && (
-                           <button 
-                            onClick={(e) => handleCardClick(entry.teamId, e)}
-                            className={`p-1.5 rounded-lg transition-colors ${pair1 === entry.teamId ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
-                            title="Add to Tie-up"
-                          >
-                            <Swords className="w-4 h-4" />
-                          </button>
-                         )}
                          <div className="p-1.5 text-slate-300 group-hover:text-indigo-400 transition-colors">
                             <ArrowRight className="w-4 h-4" />
                          </div>
@@ -223,7 +229,8 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
         </div>
       </div>
 
-      <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-slate-300 relative overflow-hidden">
+      {/* Visual Rank Cards */}
+      <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
         
         <div className="flex items-start justify-between gap-4 mb-8 relative z-10">
@@ -232,20 +239,12 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
               <Trophy className="w-8 h-8 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-2xl font-black italic tracking-tighter uppercase leading-none mb-1">THE ELITE FOUR</h3>
-              <p className="text-slate-400 font-medium text-xs tracking-wide">
-                {isAdmin ? 'Select two teams to create a quick tie-up.' : 'Click any contender to view their specific rivalry records.'}
+              <h3 className="text-2xl font-black italic tracking-tighter uppercase leading-none mb-1">PRO LEAGUE ELITE</h3>
+              <p className="text-slate-400 font-medium text-xs tracking-wide uppercase">
+                Showing the top 4 contenders by match and set wins.
               </p>
             </div>
           </div>
-          {pair1 && isAdmin && (
-            <button 
-              onClick={() => setPair1(null)}
-              className="flex items-center gap-2 bg-red-500/20 text-red-400 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/30 transition-all border border-red-500/30"
-            >
-              <X className="w-3 h-3" /> Cancel Selection
-            </button>
-          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
@@ -276,10 +275,15 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                 </div>
                 
                 <h4 className="font-black text-lg mb-1 truncate w-full">{t.teamName}</h4>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded">
-                    {t.wins} WINS
-                  </span>
+                <div className="flex flex-col gap-1.5 w-full mt-2">
+                  <div className="flex items-center justify-between bg-indigo-400/10 px-3 py-1.5 rounded-xl border border-indigo-400/10">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400">Match Wins</span>
+                    <span className="text-xs font-black text-white tabular-nums">{t.wins}</span>
+                  </div>
+                  <div className="flex items-center justify-between bg-emerald-400/10 px-3 py-1.5 rounded-xl border border-emerald-400/10">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Set Wins</span>
+                    <span className="text-xs font-black text-white tabular-nums">{t.gamesWon}</span>
+                  </div>
                 </div>
 
                 {isAdmin && !isSelected && pair1 && (
@@ -287,29 +291,14 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                     <Swords className="w-3 h-3" /> VS {top4.find(x => x.teamId === pair1)?.teamName.charAt(0)}
                   </div>
                 )}
-                
-                {!isAdmin && (
-                  <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-white/30 group-hover:text-white transition-colors">
-                    View Record
-                  </div>
-                )}
               </div>
             );
           }) : (
              <div className="col-span-full py-12 text-center bg-white/5 rounded-3xl border-2 border-dashed border-white/10 text-slate-500 font-medium italic">
-                Standings will reveal the top 4 teams here.
+                Tournament data will reveal the top contenders here.
              </div>
           )}
         </div>
-        
-        {pair1 && isAdmin && (
-          <div className="mt-8 p-4 bg-indigo-600 rounded-2xl flex items-center justify-center gap-4 animate-in slide-in-from-bottom-4 shadow-xl">
-             <div className="text-sm font-black uppercase tracking-widest">
-               MATCHUP: {top4.find(x => x.teamId === pair1)?.teamName} VS ...
-             </div>
-             <p className="text-indigo-100 text-xs font-medium">Click another team to schedule.</p>
-          </div>
-        )}
       </div>
     </div>
   );

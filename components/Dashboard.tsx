@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save } from 'lucide-react';
+import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save, Medal, Settings2, Sparkles } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament } from '../types';
+import { GoogleGenAI } from "@google/genai";
 
 interface DashboardProps {
   teams: Team[];
@@ -18,8 +19,10 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament, onSelectTeam }) => {
   const [copied, setCopied] = useState(false);
-  const [showPasscode, setShowPasscode] = useState(false);
-  const [newPasscode, setNewPasscode] = useState(tournament?.matchPasscode || '0000');
+  const [isEditingFormat, setIsEditingFormat] = useState(false);
+  const [isGeneratingMotto, setIsGeneratingMotto] = useState(false);
+  const [tournamentMotto, setTournamentMotto] = useState<string | null>(null);
+
   const activeMatches = matches.filter(m => m.status === 'live');
 
   const handleShare = () => {
@@ -28,39 +31,81 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handlePasscodeChange = () => {
+  const updateFormat = (format: 'League' | 'Knockout') => {
     if (!tournament) return;
-    onUpdateTournament({ ...tournament, matchPasscode: newPasscode });
-    alert("Scorer passcode updated successfully!");
+    onUpdateTournament({ ...tournament, format });
+    setIsEditingFormat(false);
+  };
+
+  const generateMotto = async () => {
+    if (!tournament) return;
+    setIsGeneratingMotto(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Create a short, catchy, and inspiring 1-sentence motto for a badminton tournament named "${tournament.name}". Return only the motto text, no quotes or explanations.`,
+      });
+      setTournamentMotto(response.text?.trim() || null);
+    } catch (err) {
+      console.error("AI Error:", err);
+    } finally {
+      setIsGeneratingMotto(false);
+    }
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">{tournament?.name}</h2>
-            <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border border-indigo-100">
-              {tournament?.format}
-            </span>
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <h2 className="text-4xl font-black text-slate-900 tracking-tight">{tournament?.name}</h2>
+            <div className="relative">
+              <button 
+                onClick={() => isAdmin && setIsEditingFormat(!isEditingFormat)}
+                className={`bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border border-indigo-100 flex items-center gap-2 transition-all ${isAdmin ? 'hover:bg-indigo-100 cursor-pointer' : 'cursor-default'}`}
+              >
+                <Settings2 className="w-3 h-3" />
+                Format: {tournament?.format}
+              </button>
+              {isEditingFormat && isAdmin && (
+                <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 min-w-[180px] animate-in slide-in-from-top-2">
+                  <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Select Mode</div>
+                  <button onClick={() => updateFormat('League')} className="w-full text-left px-4 py-2 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors">League Table</button>
+                  <button onClick={() => updateFormat('Knockout')} className="w-full text-left px-4 py-2 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors">Knockout Bracket</button>
+                </div>
+              )}
+            </div>
           </div>
-          <p className="text-slate-500 font-medium">Tournament Dashboard • Real-time scoring</p>
+          {tournamentMotto ? (
+             <p className="text-indigo-500 font-semibold italic text-sm mb-1 leading-relaxed">"{tournamentMotto}"</p>
+          ) : (
+            <p className="text-slate-500 font-medium">Tournament Management Hub • Real-time Updates</p>
+          )}
+          <button 
+            onClick={generateMotto} 
+            disabled={isGeneratingMotto}
+            className="text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-600 flex items-center gap-1.5 mt-1 transition-colors disabled:opacity-50"
+          >
+            <Sparkles className={`w-3 h-3 ${isGeneratingMotto ? 'animate-pulse' : ''}`} />
+            {isGeneratingMotto ? 'Inspiring...' : tournamentMotto ? 'Try another motto' : 'Generate Tournament Motto'}
+          </button>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <button 
             onClick={handleShare}
-            className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition-all shadow-sm group"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-slate-200 px-4 py-3 rounded-2xl text-slate-700 font-bold hover:bg-slate-50 transition-all shadow-sm group"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />}
-            {copied ? 'Link Copied!' : 'Share'}
+            <span className="text-sm">{copied ? 'Copied!' : 'Share'}</span>
           </button>
           {isAdmin && (
             <button 
               onClick={() => onNavigate('teams')}
-              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-600 text-white px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
-              Add Team
+              Add Teams
             </button>
           )}
         </div>
@@ -68,40 +113,54 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard icon={<Users className="w-6 h-6 text-indigo-600" />} label="Total Teams" value={teams.length} onClick={() => onNavigate('teams')} color="indigo" />
-        <StatCard icon={<Swords className="w-6 h-6 text-emerald-600" />} label="Matches Played" value={matches.length} onClick={() => onNavigate('matches')} color="emerald" />
-        <StatCard icon={<Trophy className="w-6 h-6 text-amber-600" />} label="Leader" value={standings[0]?.teamName || '---'} onClick={() => standings[0] ? onSelectTeam(standings[0].teamId) : onNavigate('standings')} color="amber" />
+        <StatCard icon={<Swords className="w-6 h-6 text-emerald-600" />} label="Tie-ups" value={matches.length} onClick={() => onNavigate('matches')} color="emerald" />
+        <StatCard icon={<Trophy className="w-6 h-6 text-amber-600" />} label="Leader" value={standings[0]?.teamName || 'TBD'} onClick={() => standings[0] ? onSelectTeam(standings[0].teamId) : onNavigate('standings')} color="amber" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-6">
           <section>
-            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-              Live Now
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 uppercase tracking-tight">
+                <span className="flex h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                Court Activity
+              </h3>
+            </div>
             {activeMatches.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center shadow-sm">
-                <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Play className="w-6 h-6 text-slate-300" />
+              <div className="bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center group hover:border-indigo-300 transition-all">
+                <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-indigo-50 transition-colors">
+                  <Play className="w-8 h-8 text-slate-300 group-hover:text-indigo-400 transition-colors" />
                 </div>
-                <p className="text-slate-500 font-medium">No matches in progress right now.</p>
-                <button onClick={() => onNavigate('matches')} className="mt-4 text-indigo-600 font-bold hover:underline inline-flex items-center gap-1">
-                  Start a match <ArrowRight className="w-4 h-4" />
+                <p className="text-slate-500 font-bold text-lg mb-2">No matches are live</p>
+                <p className="text-slate-400 text-sm mb-6">Start a match from the schedule to see live scores.</p>
+                <button onClick={() => onNavigate('matches')} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition-all inline-flex items-center gap-2 shadow-lg active:scale-95">
+                  Launch Match <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
                 {activeMatches.map(m => (
-                  <div key={m.id} onClick={() => onNavigate('matches')} className="bg-white border-2 border-indigo-100 rounded-2xl p-5 flex justify-between items-center cursor-pointer hover:border-indigo-500 transition-all group shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-                    <div className="flex items-center gap-6">
-                      <div className="font-black text-slate-900 text-lg">{teams.find(t => t.id === m.team1Id)?.name}</div>
-                      <div className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-sm italic">VS</div>
-                      <div className="font-black text-slate-900 text-lg">{teams.find(t => t.id === m.team2Id)?.name}</div>
+                  <div key={m.id} onClick={() => onNavigate('matches')} className="bg-white border-2 border-indigo-500/10 rounded-[2rem] p-6 flex justify-between items-center cursor-pointer hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-50 transition-all group relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
+                    <div className="flex items-center gap-4 sm:gap-8 flex-1 min-w-0">
+                      <div className="text-center w-16 sm:w-20">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-black text-slate-400 mb-1 group-hover:text-indigo-600 transition-colors mx-auto">{teams.find(t => t.id === m.team1Id)?.name.charAt(0)}</div>
+                        <div className="font-black text-slate-900 text-xs sm:text-sm truncate w-full">{teams.find(t => t.id === m.team1Id)?.name}</div>
+                      </div>
+                      <div className="flex flex-col items-center flex-1">
+                        <div className="text-[9px] sm:text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">LIVE SCORE</div>
+                        <div className="bg-slate-900 text-white px-4 sm:px-6 py-2 rounded-xl font-black text-lg sm:text-xl tabular-nums italic animate-pulse shadow-lg whitespace-nowrap min-w-[100px] text-center">
+                          {m.scores[m.scores.length - 1]?.team1 || 0} - {m.scores[m.scores.length - 1]?.team2 || 0}
+                        </div>
+                        <div className="text-[8px] font-bold text-slate-400 mt-2 uppercase">Game {m.scores.length}</div>
+                      </div>
+                      <div className="text-center w-16 sm:w-20">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-black text-slate-400 mb-1 group-hover:text-indigo-600 transition-colors mx-auto">{teams.find(t => t.id === m.team2Id)?.name.charAt(0)}</div>
+                        <div className="font-black text-slate-900 text-xs sm:text-sm truncate w-full">{teams.find(t => t.id === m.team2Id)?.name}</div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                       <span className="text-xs font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded">Resume</span>
-                       <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-600" />
+                    <div className="p-2 sm:p-3 bg-indigo-50 rounded-2xl text-indigo-600 group-hover:translate-x-1 transition-transform group-hover:bg-indigo-600 group-hover:text-white ml-2">
+                       <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                   </div>
                 ))}
@@ -109,119 +168,107 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
             )}
           </section>
 
-          {isAdmin && (
-            <section className="bg-white border-2 border-slate-100 rounded-[2rem] p-8 shadow-xl shadow-slate-100">
-               <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-emerald-100 p-3 rounded-2xl text-emerald-600">
-                    <ShieldCheck className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">Security & Access</h3>
-                    <p className="text-sm text-slate-500 font-medium">Manage codes for tournament officials.</p>
-                  </div>
-               </div>
-               
-               <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Scorer Match Passcode</span>
-                    <button onClick={() => setShowPasscode(!showPasscode)} className="text-indigo-600 hover:text-indigo-800 p-1">
-                       {showPasscode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <div className="flex gap-3">
-                    <input 
-                      type={showPasscode ? "text" : "password"}
-                      value={newPasscode}
-                      onChange={(e) => setNewPasscode(e.target.value)}
-                      className="flex-1 px-4 py-2 border-2 border-slate-200 rounded-xl font-black tracking-[0.2em] outline-none focus:border-indigo-500 transition-all text-xl"
-                    />
-                    <button 
-                      onClick={handlePasscodeChange}
-                      className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" /> Update
-                    </button>
-                  </div>
-                  <p className="mt-3 text-[10px] text-slate-400 font-medium italic">
-                    Scorers must enter this code to start or resume any match.
-                  </p>
-               </div>
-            </section>
-          )}
-          
-          <section className="bg-slate-50 border border-slate-200 rounded-3xl p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-100 rounded-xl"><RotateCcw className="w-4 h-4 text-red-600" /></div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Tournament Reset</h3>
-                  <p className="text-xs text-slate-500">Clears all tournament data.</p>
+          <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm">
+             <div className="flex items-center gap-4 mb-6">
+                <div className="bg-slate-100 p-3 rounded-2xl">
+                  <Settings2 className="w-6 h-6 text-slate-600" />
                 </div>
-              </div>
-              {isAdmin ? (
-                <button onClick={onReset} className="bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm">
-                  <Trash2 className="w-3.5 h-3.5" /> Reset Now
-                </button>
-              ) : (
-                <button onClick={onAdminLogin} className="flex items-center gap-2 text-slate-400 hover:text-slate-600 text-xs font-bold bg-white border border-slate-200 px-4 py-2 rounded-xl transition-colors">
-                  <Lock className="w-3.5 h-3.5" /> Unlock Admin
-                </button>
-              )}
-            </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Quick Actions</h3>
+                  <p className="text-sm text-slate-500 font-medium">Tools to manage the tournament flow.</p>
+                </div>
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <QuickActionButton icon={<UserPlus className="w-4 h-4" />} label="Register Team" onClick={() => onNavigate('teams')} />
+                <QuickActionButton icon={<Swords className="w-4 h-4" />} label="New Tie-up" onClick={() => onNavigate('matches')} />
+                <QuickActionButton icon={<RotateCcw className="w-4 h-4" />} label="Clear All Data" onClick={onReset} danger={isAdmin} />
+                <QuickActionButton icon={<Lock className="w-4 h-4" />} label={isAdmin ? "Lock Admin" : "Admin Login"} onClick={onAdminLogin} />
+             </div>
           </section>
         </div>
 
-        <section className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-xl flex flex-col">
-          <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <section className="bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
+          <div className="p-8 flex justify-between items-center border-b border-white/5 bg-white/5">
              <div>
-               <h3 className="font-black text-slate-900 text-xl flex items-center gap-3 uppercase tracking-tight">
-                  <Trophy className="w-6 h-6 text-amber-500" />
-                  Top 4 Leaders
+               <h3 className="font-black text-white text-2xl flex items-center gap-3 uppercase tracking-tighter italic">
+                  <Trophy className="w-8 h-8 text-amber-400" />
+                  Elite Power Rankings
                </h3>
-               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Qualification Zone</p>
+               <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] mt-1">Qualification Status: OPEN</p>
              </div>
-             <button onClick={() => onNavigate('standings')} className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-100 transition-colors">Full Board</button>
+             <button onClick={() => onNavigate('standings')} className="bg-indigo-500 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 active:scale-95">Full Standings</button>
           </div>
           <div className="flex-1">
             {standings.length === 0 ? (
-              <div className="p-16 text-center text-slate-400 italic font-medium">Complete a match to see rankings.</div>
+              <div className="p-20 text-center flex flex-col items-center">
+                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                   <Medal className="w-8 h-8 text-white/10" />
+                 </div>
+                 <p className="text-white/30 font-bold italic">The leaderboard is waiting...</p>
+                 <p className="text-white/20 text-sm mt-2">Teams will appear here once matches are recorded.</p>
+              </div>
             ) : (
-              <div className="divide-y divide-slate-100">
-                {standings.slice(0, 4).map((s, i) => (
+              <div className="divide-y divide-white/5">
+                {standings.slice(0, 5).map((s, i) => (
                   <div 
                     key={s.teamId} 
                     onClick={() => onSelectTeam(s.teamId)}
-                    className="px-8 py-6 flex items-center justify-between hover:bg-indigo-50 transition-all group cursor-pointer"
+                    className="px-8 py-6 flex items-center justify-between hover:bg-white/5 transition-all group cursor-pointer"
                   >
-                    <div className="flex items-center gap-5">
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm ${i === 0 ? 'bg-amber-100 text-amber-600 border border-amber-200' : i === 1 ? 'bg-slate-200 text-slate-700' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-500'}`}>
+                    <div className="flex items-center gap-6">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg transform transition-transform group-hover:scale-110 ${
+                        i === 0 ? 'bg-amber-400 text-amber-900 border-4 border-amber-300' : 
+                        i === 1 ? 'bg-slate-300 text-slate-800' : 
+                        i === 2 ? 'bg-orange-400 text-orange-900' : 
+                        'bg-white/10 text-white/60'
+                      }`}>
                         {i + 1}
                       </div>
                       <div>
-                        <div className="font-black text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">{s.teamName}</div>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{s.wins} Wins</span>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.pointDiff > 0 ? `+${s.pointDiff}` : s.pointDiff} PD</span>
+                        <div className="font-black text-white text-xl group-hover:text-indigo-400 transition-colors">{s.teamName}</div>
+                        <div className="flex items-center gap-4 mt-1.5">
+                          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-400">
+                            <Swords className="w-3.5 h-3.5" /> {s.wins} Wins
+                          </span>
+                          <div className="w-1 h-1 bg-white/10 rounded-full"></div>
+                          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                            <Medal className="w-3.5 h-3.5" /> {s.gamesWon} Sets
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                       {i === 0 && <Trophy className="w-6 h-6 text-amber-400 drop-shadow-sm" />}
-                       <ArrowRight className="w-4 h-4 text-slate-200 group-hover:text-indigo-300 transition-colors" />
+                    <div className="p-3 bg-white/5 rounded-2xl text-white/20 group-hover:text-white group-hover:bg-white/10 transition-all">
+                       <ArrowRight className="w-5 h-5" />
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.15em]">Primary: Wins • Secondary: Point Difference</p>
+          <div className="p-6 bg-black/40 text-center border-t border-white/5">
+            <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.25em]">Ranking Criteria: Match Wins &bull; Game Wins &bull; Net Point Difference</p>
           </div>
         </section>
       </div>
     </div>
   );
 };
+
+const QuickActionButton = ({ icon, label, onClick, danger }: { icon: React.ReactNode, label: string, onClick: () => void, danger?: boolean }) => (
+  <button 
+    onClick={onClick}
+    className={`flex items-center gap-3 px-4 py-4 rounded-2xl border transition-all text-sm font-bold ${
+      danger 
+        ? 'border-red-100 bg-red-50 text-red-600 hover:bg-red-100 active:scale-95' 
+        : 'border-slate-100 bg-slate-50 text-slate-700 hover:bg-white hover:border-indigo-100 hover:shadow-md active:scale-95'
+    }`}
+  >
+    <div className={`p-2 rounded-xl transition-colors ${danger ? 'bg-red-200 text-red-700' : 'bg-white shadow-sm text-indigo-600'}`}>
+      {icon}
+    </div>
+    {label}
+  </button>
+);
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -233,17 +280,18 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ icon, label, value, onClick, color }) => {
   const colorClasses = {
-    indigo: 'border-indigo-100 hover:border-indigo-500 bg-white shadow-indigo-100/20',
-    emerald: 'border-emerald-100 hover:border-emerald-500 bg-white shadow-emerald-100/20',
-    amber: 'border-amber-100 hover:border-amber-500 bg-white shadow-amber-100/20',
+    indigo: 'border-indigo-100 hover:border-indigo-500 bg-white hover:shadow-indigo-100/50',
+    emerald: 'border-emerald-100 hover:border-emerald-500 bg-white hover:shadow-emerald-100/50',
+    amber: 'border-amber-100 hover:border-amber-500 bg-white hover:shadow-amber-100/50',
   };
   return (
-    <div onClick={onClick} className={`p-7 rounded-[2rem] border-2 transition-all cursor-pointer group shadow-xl relative overflow-hidden ${colorClasses[color]}`}>
-      <div className="flex items-center gap-4 mb-3 relative z-10">
-        <div className="p-2.5 bg-slate-50 rounded-2xl group-hover:bg-white group-hover:shadow-md transition-all duration-300">{icon}</div>
-        <span className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">{label}</span>
+    <div onClick={onClick} className={`p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer group shadow-xl relative overflow-hidden ${colorClasses[color]}`}>
+      <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -translate-y-16 translate-x-16 group-hover:scale-150 transition-transform duration-700"></div>
+      <div className="flex items-center gap-4 mb-4 relative z-10">
+        <div className="p-3 bg-slate-50 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">{icon}</div>
+        <span className="text-slate-400 font-black text-xs uppercase tracking-[0.25em]">{label}</span>
       </div>
-      <div className="text-4xl font-black text-slate-900 tracking-tighter relative z-10 group-hover:translate-x-1 transition-transform">{value}</div>
+      <div className="text-4xl font-black text-slate-900 tracking-tighter relative z-10 group-hover:translate-x-2 transition-transform duration-300">{value}</div>
     </div>
   );
 };

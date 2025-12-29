@@ -17,7 +17,8 @@ import {
   LayoutList,
   CheckCircle2,
   PlayCircle,
-  Flame
+  Flame,
+  Medal
 } from 'lucide-react';
 import { Team, Match, StandingsEntry } from '../types';
 
@@ -43,8 +44,10 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
   const wonCount = completedMatches.filter(m => m.winnerId === team.id).length;
   const lostCount = playedCount - wonCount;
   
+  const teamStats = standings.find(s => s.teamId === team.id);
   const teamRank = standings.findIndex(s => s.teamId === team.id) + 1;
-  const teamPoints = standings.find(s => s.teamId === team.id)?.pointsFor || 0;
+  const teamPoints = teamStats?.pointsFor || 0;
+  const gamesWonTotal = teamStats?.gamesWon || 0;
 
   // Calculate form (last 5)
   const form = completedMatches.slice(0, 5).map(m => m.winnerId === team.id ? 'W' : 'L').reverse();
@@ -71,7 +74,6 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
     return acc;
   }, {} as Record<string, { opponentName: string, wins: number, losses: number, matches: Match[] }>);
 
-  // Fix: Explicitly cast Object.values to the expected type to resolve 'unknown' type error in map
   const h2hList = Object.values(h2hStats) as { opponentName: string, wins: number, losses: number, matches: Match[] }[];
 
   // Calculate umpiring count
@@ -130,11 +132,12 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
       </div>
 
       {/* Main Grid Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
         <StatItem label="Remaining" value={scheduledCount} color="slate" icon={<Clock className="w-4 h-4"/>} />
         <StatItem label="Played" value={playedCount} color="indigo" icon={<Activity className="w-4 h-4"/>} />
-        <StatItem label="Victory" value={wonCount} color="emerald" icon={<Trophy className="w-4 h-4"/>} />
-        <StatItem label="Defeat" value={lostCount} color="red" icon={<History className="w-4 h-4"/>} />
+        <StatItem label="Sets Won" value={gamesWonTotal} color="emerald" icon={<Medal className="w-4 h-4"/>} />
+        <StatItem label="Match W" value={wonCount} color="emerald" icon={<Trophy className="w-4 h-4"/>} />
+        <StatItem label="Match L" value={lostCount} color="red" icon={<History className="w-4 h-4"/>} />
         <StatItem label="Duty" value={umpiringCount} color="amber" icon={<UserCheck className="w-4 h-4"/>} />
       </div>
 
@@ -182,7 +185,10 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                            </span>
                            <span className={`font-black text-sm truncate max-w-[120px] ${isCurrent ? 'text-white' : 'text-white/70'}`}>{s.teamName}</span>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{s.wins}W</span>
+                        <div className="flex items-center gap-2">
+                           <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{s.wins}W</span>
+                           <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{s.gamesWon}S</span>
+                        </div>
                      </div>
                    );
                 })}
@@ -219,7 +225,6 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                       <div className="space-y-2">
                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Score History</div>
                          <div className="flex flex-wrap gap-2">
-                           {/* Fix: Explicitly typed 'm' as Match to resolve type error */}
                            {stat.matches.map((m: Match) => {
                              const isTeam1 = m.team1Id === team.id;
                              return m.scores.map((s, idx) => (
@@ -280,7 +285,6 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                            </div>
                         </div>
 
-                        {/* Opponent Members Display */}
                         <div className="mb-6">
                            <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                               <Users className="w-3 h-3" /> Opponent Squad

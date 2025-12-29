@@ -103,6 +103,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
     if (match.status === 'scheduled') {
       onUpdate({ ...match, status: 'live' });
     }
+    // Prevent scrolling on mobile for better touch experience
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = 'auto';
@@ -186,9 +187,9 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
         {canFinishGame ? (
           <button
             onClick={handleFinishGame}
-            className="flex-1 bg-white text-slate-900 py-6 rounded-[2.5rem] font-black text-2xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="flex-1 bg-white text-slate-900 py-6 rounded-[2.5rem] font-black text-xl sm:text-2xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4"
           >
-            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600" />
             SUBMIT GAME RESULT
           </button>
         ) : (
@@ -224,19 +225,18 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
     ? (isActive ? 'bg-indigo-600/20 border-indigo-500/50' : 'bg-white/5 border-white/5')
     : (isActive ? 'bg-emerald-600/20 border-emerald-500/50' : 'bg-white/5 border-white/5');
   
-  const accentText = colorClass === 'indigo' ? 'text-indigo-400' : 'text-emerald-400';
   const accentBg = colorClass === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500';
 
   return (
-    <div className={`relative flex flex-col items-center justify-center p-6 rounded-[3rem] border-4 transition-all duration-500 ${bgClasses}`}>
+    <div className={`relative flex flex-col items-center justify-center p-4 sm:p-6 rounded-[3rem] border-4 transition-all duration-500 ${bgClasses}`}>
       {/* Background large number */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] text-[25rem] font-black leading-none select-none">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[18rem] sm:text-[25rem] font-black leading-none select-none">
         {side}
       </div>
 
       {/* Team Meta */}
-      <div className="text-center mb-6 relative z-10">
-        <h3 className="text-2xl font-black uppercase tracking-tight mb-2 drop-shadow-md">{team.name}</h3>
+      <div className="text-center mb-4 sm:mb-6 relative z-10 w-full px-2">
+        <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2 drop-shadow-md truncate">{team.name}</h3>
         <div className="flex items-center justify-center gap-1">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className={`w-8 h-1.5 rounded-full ${i < gamesWon ? accentBg : 'bg-white/10'}`} />
@@ -245,20 +245,21 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
       </div>
 
       {/* Interactive Scoring Controls */}
-      <div className="flex items-center gap-6 relative z-10 w-full max-w-sm">
+      <div className="flex items-center gap-4 sm:gap-6 relative z-10 w-full max-w-sm">
         <button 
           onClick={onRemove}
-          className="flex-shrink-0 w-20 h-20 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center group active:scale-90"
+          className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center group active:scale-90"
         >
-          <Minus className="w-10 h-10 text-white/40 group-hover:text-white" />
+          <Minus className="w-8 h-8 sm:w-10 sm:h-10 text-white/40 group-hover:text-white" />
         </button>
 
-        <div className="flex-1 relative flex items-center justify-center group">
+        <div className="flex-1 relative flex items-center justify-center group min-w-0">
           <input 
             type="number" 
             value={score}
             onChange={(e) => onInput(e.target.value)}
-            className="w-full text-[12rem] font-black tabular-nums leading-none tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 cursor-text selection:bg-indigo-500/30"
+            className="w-full text-7xl sm:text-8xl md:text-[10rem] font-black tabular-nums leading-tight tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 cursor-text selection:bg-indigo-500/30 overflow-visible"
+            style={{ height: '1.2em' }}
           />
           <div className="absolute -bottom-4 opacity-30 group-focus-within:opacity-100 transition-opacity">
             <Edit3 className="w-5 h-5" />
@@ -267,11 +268,11 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
 
         <button 
           onClick={onAdd}
-          className={`flex-shrink-0 w-20 h-20 rounded-full border transition-all flex items-center justify-center group active:scale-90 shadow-2xl ${
+          className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full border transition-all flex items-center justify-center group active:scale-90 shadow-2xl ${
             colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400' : 'bg-emerald-500 border-emerald-400'
           }`}
         >
-          <Plus className="w-10 h-10 text-white" />
+          <Plus className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
         </button>
       </div>
 

@@ -196,7 +196,6 @@ const App: React.FC = () => {
     const match = matches.find(m => m.id === activeMatchId);
     if (!match) return;
 
-    // Filter to valid team names
     const umpires = umpireInput.filter(u => u.trim() !== "");
     const updatedMatch: Match = { ...match, umpireNames: umpires.length > 0 ? umpires : undefined };
     
@@ -260,28 +259,20 @@ const App: React.FC = () => {
         t1.losses += 1;
       }
 
-      let t1GW = 0;
-      let t2GW = 0;
-      
       match.scores.forEach(game => {
-        if (game.team1 > game.team2) t1GW++;
-        else if (game.team2 > game.team1) t2GW++;
+        if (game.team1 > game.team2) {
+          t1.gamesWon++;
+          t2.gamesLost++;
+        } else if (game.team2 > game.team1) {
+          t2.gamesWon++;
+          t1.gamesLost++;
+        }
 
         t1.pointsFor += (game.team1 || 0);
         t1.pointsAgainst += (game.team2 || 0);
         t2.pointsFor += (game.team2 || 0);
         t2.pointsAgainst += (game.team1 || 0);
       });
-
-      if (match.format === 3) {
-        if (t1GW === 2 && t2GW === 0) t1GW = 3;
-        else if (t2GW === 2 && t1GW === 0) t2GW = 3;
-      }
-
-      t1.gamesWon += t1GW;
-      t1.gamesLost += t2GW;
-      t2.gamesWon += t2GW;
-      t2.gamesLost += t1GW;
     });
 
     return Object.values(stats)
