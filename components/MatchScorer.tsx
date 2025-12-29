@@ -118,15 +118,6 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
         </button>
         
         <div className="flex flex-col items-center">
-          {match.umpireNames && match.umpireNames.length > 0 && (
-            <div className="flex items-center gap-1.5 mb-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-              <UserCheck className="w-3 h-3 text-emerald-400" />
-              <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">
-                Umpire: {match.umpireNames.join(", ")}
-              </span>
-            </div>
-          )}
-          
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] text-center">
               Match Progression
@@ -145,8 +136,8 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
                     className={`relative h-2.5 rounded-full transition-all duration-500 overflow-hidden ${
                       isCompleted 
                         ? winnerOfGame === 1 
-                          ? 'bg-indigo-500 w-12 shadow-[0_0_12px_rgba(99,102,241,0.4)]' 
-                          : 'bg-emerald-500 w-12 shadow-[0_0_12px_rgba(16,185,129,0.4)]' 
+                          ? 'bg-indigo-500 w-12' 
+                          : 'bg-emerald-500 w-12' 
                         : isCurrent 
                           ? 'bg-white/30 w-16 animate-pulse ring-2 ring-white/10' 
                           : 'bg-white/10 w-8'
@@ -159,7 +150,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
                     )}
                   </div>
                   <span className={`text-[8px] font-black uppercase tracking-tighter ${isCurrent ? 'text-white' : 'text-white/20'}`}>
-                    Game {i + 1}
+                    G{i + 1}
                   </span>
                 </div>
               );
@@ -215,19 +206,13 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
             className="flex-1 bg-white text-slate-900 py-4 rounded-3xl font-black text-lg sm:text-xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4"
           >
             <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-            SUBMIT GAME {match.scores.length + 1}
+            FINISH GAME {match.scores.length + 1}
           </button>
         ) : (
           <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl py-4 flex flex-col items-center justify-center">
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px] sm:text-xs">Game Point: {match.pointsTarget}</span>
-            </div>
-            <div className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Awaiting winner conditions...</div>
+            <span className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px] sm:text-xs">Game Point: {match.pointsTarget}</span>
           </div>
         )}
-
-        <div className="w-14 hidden sm:block"></div>
       </div>
     </div>
   );
@@ -258,7 +243,6 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
         {side}
       </div>
 
-      {/* Team Meta */}
       <div className="text-center mb-4 relative z-10 w-full px-2">
         <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2 drop-shadow-md truncate leading-tight">{team.name}</h3>
         <div className="flex items-center justify-center gap-1.5">
@@ -268,37 +252,31 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
         </div>
       </div>
 
-      {/* Interactive Scoring Controls */}
       <div className="flex items-center gap-2 sm:gap-6 relative z-10 w-full max-w-sm px-2 overflow-visible">
         <button 
           onClick={onRemove}
-          className="flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center group active:scale-90"
+          className="flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center active:scale-90"
         >
-          <Minus className="w-8 h-8 sm:w-12 sm:h-12 text-white/40 group-hover:text-white" />
+          <Minus className="w-8 h-8 sm:w-12 sm:h-12 text-white/40" />
         </button>
 
-        <div className="flex-1 relative flex items-center justify-center group min-w-0 overflow-visible">
+        <div className="flex-1 relative flex items-center justify-center min-w-0">
           <input 
             type="number" 
             value={score}
             onChange={(e) => onInput(e.target.value)}
-            className="w-full text-7xl sm:text-8xl md:text-[11rem] font-black tabular-nums tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 cursor-text selection:bg-indigo-500/30 overflow-visible py-6 leading-[1.2]"
-            style={{ height: 'auto', minHeight: '1.2em' }}
+            className="w-full text-7xl sm:text-8xl md:text-[11rem] font-black tabular-nums tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 py-6 leading-[1.2]"
           />
         </div>
 
         <button 
           onClick={onAdd}
-          className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full border transition-all flex items-center justify-center group active:scale-90 shadow-2xl ${
-            colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-emerald-500 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+          className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full border transition-all flex items-center justify-center active:scale-90 shadow-2xl ${
+            colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400' : 'bg-emerald-500 border-emerald-400'
           }`}
         >
           <Plus className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
         </button>
-      </div>
-
-      <div className="mt-4 text-white/20 font-bold uppercase tracking-[0.2em] text-[10px] hidden sm:block">
-        Tap center score to adjust directly
       </div>
     </div>
   );

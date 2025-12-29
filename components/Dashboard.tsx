@@ -1,8 +1,6 @@
-
 import React, { useState } from 'react';
-import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save, Medal, Settings2, Sparkles, X, CheckCircle2 } from 'lucide-react';
+import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save, Medal, Settings2, X, CheckCircle2 } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament } from '../types';
-import { GoogleGenAI } from "@google/genai";
 
 interface DashboardProps {
   teams: Team[];
@@ -21,9 +19,6 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament, onSelectTeam, onAddTeam }) => {
   const [copied, setCopied] = useState(false);
   const [isEditingFormat, setIsEditingFormat] = useState(false);
-  const [isGeneratingMotto, setIsGeneratingMotto] = useState(false);
-  const [tournamentMotto, setTournamentMotto] = useState<string | null>(null);
-  
   const [quickTeamName, setQuickTeamName] = useState('');
   const [isAddingQuick, setIsAddingQuick] = useState(false);
   const [lastAddedTeam, setLastAddedTeam] = useState<string | null>(null);
@@ -49,32 +44,15 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     const teamName = quickTeamName.trim();
     onAddTeam({
       id: crypto.randomUUID(),
-      tournamentId: tournament.id,
+      tournament_id: tournament.id, // backend naming
+      tournamentId: tournament.id, // frontend naming
       name: teamName,
       members: ['Player 1', 'Player 2']
-    });
+    } as any);
     
     setLastAddedTeam(teamName);
     setQuickTeamName('');
-    // Notice: We don't call setIsAddingQuick(false) so user can add "again and again"
     setTimeout(() => setLastAddedTeam(null), 3000);
-  };
-
-  const generateMotto = async () => {
-    if (!tournament) return;
-    setIsGeneratingMotto(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Create a short, catchy, and inspiring 1-sentence motto for a badminton tournament named "${tournament.name}". Return only the motto text, no quotes or explanations.`,
-      });
-      setTournamentMotto(response.text?.trim() || null);
-    } catch (err) {
-      console.error("AI Error:", err);
-    } finally {
-      setIsGeneratingMotto(false);
-    }
   };
 
   return (
@@ -106,19 +84,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
               )}
             </div>
           </div>
-          {tournamentMotto ? (
-             <p className="text-indigo-500 font-semibold italic text-sm mb-1 leading-relaxed">"{tournamentMotto}"</p>
-          ) : (
-            <p className="text-slate-500 font-medium">Tournament Management Hub • Real-time Updates</p>
-          )}
-          <button 
-            onClick={generateMotto} 
-            disabled={isGeneratingMotto}
-            className="text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-600 flex items-center gap-1.5 mt-1 transition-colors disabled:opacity-50"
-          >
-            <Sparkles className={`w-3 h-3 ${isGeneratingMotto ? 'animate-pulse' : ''}`} />
-            {isGeneratingMotto ? 'Inspiring...' : tournamentMotto ? 'Try another motto' : 'Generate Tournament Motto'}
-          </button>
+          <p className="text-slate-500 font-medium">Tournament Management Hub • Real-time Updates</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button 
@@ -134,7 +100,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
               className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl active:scale-95 ${isAddingQuick ? 'bg-slate-800 text-white' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100'}`}
             >
               {isAddingQuick ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              {isAddingQuick ? 'Close Add' : 'Add Teams'}
+              {isAddingQuick ? 'Close Add' : 'Quick Add Teams'}
             </button>
           )}
         </div>
@@ -148,8 +114,8 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                 <Users className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-black uppercase tracking-tight">Quick Add Teams</h3>
-                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest">Type a name and press enter to add another</p>
+                <h3 className="text-xl font-black uppercase tracking-tight">Rapid Registration</h3>
+                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest">Add teams one after another</p>
               </div>
             </div>
             {lastAddedTeam && (
@@ -164,14 +130,14 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
               autoFocus
               required
               type="text"
-              placeholder="Enter Team Name (e.g. Smash Kings)"
+              placeholder="Enter Team Name"
               value={quickTeamName}
               onChange={(e) => setQuickTeamName(e.target.value)}
               className="flex-1 bg-white/10 border-2 border-white/20 rounded-2xl px-6 py-4 text-white placeholder:text-white/40 font-bold text-lg outline-none focus:border-white transition-all"
             />
             <button type="submit" className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center gap-2">
               <Plus className="w-4 h-4" />
-              Save Team
+              Add
             </button>
           </form>
         </div>
@@ -179,7 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard icon={<Users className="w-6 h-6 text-indigo-600" />} label="Total Teams" value={teams.length} onClick={() => onNavigate('teams')} color="indigo" />
-        <StatCard icon={<Swords className="w-6 h-6 text-emerald-600" />} label="Tie-ups" value={matches.length} onClick={() => onNavigate('matches')} color="emerald" />
+        <StatCard icon={<Swords className="w-6 h-6 text-emerald-600" />} label="Matches" value={matches.length} onClick={() => onNavigate('matches')} color="emerald" />
         <StatCard icon={<Trophy className="w-6 h-6 text-amber-600" />} label="Leader" value={standings[0]?.teamName || 'TBD'} onClick={() => standings[0] ? onSelectTeam(standings[0].teamId) : onNavigate('standings')} color="amber" />
       </div>
 
@@ -197,10 +163,9 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                 <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-indigo-50 transition-colors">
                   <Play className="w-8 h-8 text-slate-300 group-hover:text-indigo-400 transition-colors" />
                 </div>
-                <p className="text-slate-500 font-bold text-lg mb-2">No matches are live</p>
-                <p className="text-slate-400 text-sm mb-6">Start a match from the schedule to see live scores.</p>
+                <p className="text-slate-500 font-bold text-lg mb-2">No live matches</p>
                 <button onClick={() => onNavigate('matches')} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition-all inline-flex items-center gap-2 shadow-lg active:scale-95">
-                  Launch Match <ArrowRight className="w-4 h-4" />
+                  View Matches <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             ) : (
@@ -218,15 +183,11 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                         <div className="bg-slate-900 text-white px-6 sm:px-10 py-3 rounded-xl font-black text-lg sm:text-2xl tabular-nums leading-tight shadow-lg whitespace-nowrap min-w-[140px] text-center border-b-4 border-indigo-500">
                           {m.scores[m.scores.length - 1]?.team1 || 0} - {m.scores[m.scores.length - 1]?.team2 || 0}
                         </div>
-                        <div className="text-[8px] font-bold text-slate-400 mt-2 uppercase">Game {m.scores.length}</div>
                       </div>
                       <div className="text-center w-16 sm:w-20">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-black text-slate-400 mb-1 group-hover:text-indigo-600 transition-colors mx-auto">{teams.find(t => t.id === m.team2Id)?.name.charAt(0)}</div>
                         <div className="font-black text-slate-900 text-xs sm:text-sm truncate w-full">{teams.find(t => t.id === m.team2Id)?.name}</div>
                       </div>
-                    </div>
-                    <div className="p-2 sm:p-3 bg-indigo-50 rounded-2xl text-indigo-600 group-hover:translate-x-1 transition-transform group-hover:bg-indigo-600 group-hover:text-white ml-2">
-                       <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                   </div>
                 ))}
@@ -241,13 +202,12 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Quick Actions</h3>
-                  <p className="text-sm text-slate-500 font-medium">Tools to manage the tournament flow.</p>
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <QuickActionButton icon={<UserPlus className="w-4 h-4" />} label="Register Team" onClick={() => onNavigate('teams')} />
                 <QuickActionButton icon={<Swords className="w-4 h-4" />} label="New Tie-up" onClick={() => onNavigate('matches')} />
-                <QuickActionButton icon={<RotateCcw className="w-4 h-4" />} label="Clear All Data" onClick={onReset} danger={isAdmin} />
+                <QuickActionButton icon={<RotateCcw className="w-4 h-4" />} label="Clear Data" onClick={onReset} danger={isAdmin} />
                 <QuickActionButton icon={<Lock className="w-4 h-4" />} label={isAdmin ? "Lock Admin" : "Admin Login"} onClick={onAdminLogin} />
              </div>
           </section>
@@ -255,23 +215,16 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
 
         <section className="bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
           <div className="p-8 flex justify-between items-center border-b border-white/5 bg-white/5">
-             <div>
-               <h3 className="font-black text-white text-2xl flex items-center gap-3 uppercase tracking-tighter italic">
-                  <Trophy className="w-8 h-8 text-amber-400" />
-                  Elite Power Rankings
-               </h3>
-               <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] mt-1">Qualification Status: OPEN</p>
-             </div>
-             <button onClick={() => onNavigate('standings')} className="bg-indigo-500 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 active:scale-95">Full Standings</button>
+             <h3 className="font-black text-white text-2xl flex items-center gap-3 uppercase tracking-tighter italic">
+                <Trophy className="w-8 h-8 text-amber-400" />
+                Elite Power Rankings
+             </h3>
+             <button onClick={() => onNavigate('standings')} className="bg-indigo-500 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg active:scale-95">Full Table</button>
           </div>
           <div className="flex-1">
             {standings.length === 0 ? (
               <div className="p-20 text-center flex flex-col items-center">
-                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                   <Medal className="w-8 h-8 text-white/10" />
-                 </div>
                  <p className="text-white/30 font-bold italic">The leaderboard is waiting...</p>
-                 <p className="text-white/20 text-sm mt-2">Teams will appear here once matches are recorded.</p>
               </div>
             ) : (
               <div className="divide-y divide-white/5">
@@ -283,36 +236,22 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                   >
                     <div className="flex items-center gap-6">
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg transform transition-transform group-hover:scale-110 ${
-                        i === 0 ? 'bg-amber-400 text-amber-900 border-4 border-amber-300' : 
-                        i === 1 ? 'bg-slate-300 text-slate-800' : 
-                        i === 2 ? 'bg-orange-400 text-orange-900' : 
-                        'bg-white/10 text-white/60'
+                        i === 0 ? 'bg-amber-400 text-amber-900' : 'bg-white/10 text-white/60'
                       }`}>
                         {i + 1}
                       </div>
                       <div>
                         <div className="font-black text-white text-xl group-hover:text-indigo-400 transition-colors">{s.teamName}</div>
                         <div className="flex items-center gap-4 mt-1.5">
-                          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-400">
-                            <Swords className="w-3.5 h-3.5" /> {s.wins} Wins
-                          </span>
-                          <div className="w-1 h-1 bg-white/10 rounded-full"></div>
-                          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-400">
-                            <Medal className="w-3.5 h-3.5" /> {s.gamesWon} Sets
-                          </span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">{s.wins} Wins</span>
                         </div>
                       </div>
                     </div>
-                    <div className="p-3 bg-white/5 rounded-2xl text-white/20 group-hover:text-white group-hover:bg-white/10 transition-all">
-                       <ArrowRight className="w-5 h-5" />
-                    </div>
+                    <ArrowRight className="w-5 h-5 text-white/20 group-hover:text-white" />
                   </div>
                 ))}
               </div>
             )}
-          </div>
-          <div className="p-6 bg-black/40 text-center border-t border-white/5">
-            <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.25em]">Ranking Criteria: Match Wins &bull; Game Wins &bull; Net Point Difference</p>
           </div>
         </section>
       </div>
@@ -326,33 +265,24 @@ const QuickActionButton = ({ icon, label, onClick, danger }: { icon: React.React
     className={`flex items-center gap-3 px-4 py-4 rounded-2xl border transition-all text-sm font-bold ${
       danger 
         ? 'border-red-100 bg-red-50 text-red-600 hover:bg-red-100 active:scale-95' 
-        : 'border-slate-100 bg-slate-50 text-slate-700 hover:bg-white hover:border-indigo-100 hover:shadow-md active:scale-95'
+        : 'border-slate-100 bg-slate-50 text-slate-700 hover:bg-white hover:border-indigo-100 active:scale-95'
     }`}
   >
-    <div className={`p-2 rounded-xl transition-colors ${danger ? 'bg-red-200 text-red-700' : 'bg-white shadow-sm text-indigo-600'}`}>
+    <div className={`p-2 rounded-xl ${danger ? 'bg-red-200 text-red-700' : 'bg-white shadow-sm text-indigo-600'}`}>
       {icon}
     </div>
     {label}
   </button>
 );
 
-interface StatCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  onClick: () => void;
-  color: 'indigo' | 'emerald' | 'amber';
-}
-
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, onClick, color }) => {
+const StatCard = ({ icon, label, value, onClick, color }: { icon: React.ReactNode, label: string, value: string | number, onClick: () => void, color: 'indigo' | 'emerald' | 'amber' }) => {
   const colorClasses = {
-    indigo: 'border-indigo-100 hover:border-indigo-500 bg-white hover:shadow-indigo-100/50',
-    emerald: 'border-emerald-100 hover:border-emerald-500 bg-white hover:shadow-emerald-100/50',
-    amber: 'border-amber-100 hover:border-amber-500 bg-white hover:shadow-amber-100/50',
+    indigo: 'border-indigo-100 hover:border-indigo-500 bg-white shadow-indigo-100/50',
+    emerald: 'border-emerald-100 hover:border-emerald-500 bg-white shadow-emerald-100/50',
+    amber: 'border-amber-100 hover:border-amber-500 bg-white shadow-amber-100/50',
   };
   return (
     <div onClick={onClick} className={`p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer group shadow-xl relative overflow-hidden ${colorClasses[color]}`}>
-      <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -translate-y-16 translate-x-16 group-hover:scale-150 transition-transform duration-700"></div>
       <div className="flex items-center gap-4 mb-4 relative z-10">
         <div className="p-3 bg-slate-50 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">{icon}</div>
         <span className="text-slate-400 font-black text-xs uppercase tracking-[0.25em]">{label}</span>
