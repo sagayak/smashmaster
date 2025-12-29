@@ -149,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                       </div>
                       <div className="flex flex-col items-center flex-1">
                         <div className="text-[9px] sm:text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">LIVE SCORE</div>
-                        <div className="bg-slate-900 text-white px-4 sm:px-6 py-2 rounded-xl font-black text-lg sm:text-xl tabular-nums italic animate-pulse shadow-lg whitespace-nowrap min-w-[100px] text-center">
+                        <div className="bg-slate-900 text-white px-6 sm:px-8 py-2 rounded-xl font-black text-lg sm:text-2xl tabular-nums shadow-lg whitespace-nowrap min-w-[120px] text-center">
                           {m.scores[m.scores.length - 1]?.team1 || 0} - {m.scores[m.scores.length - 1]?.team2 || 0}
                         </div>
                         <div className="text-[8px] font-bold text-slate-400 mt-2 uppercase">Game {m.scores.length}</div>

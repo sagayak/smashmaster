@@ -28,6 +28,15 @@
         background-size: 200% 200%;
         animation: gradient 3s ease infinite;
       }
+      /* Ensure number inputs don't show spinners and are legible */
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type=number] {
+        -moz-appearance: textfield;
+      }
     </style>
     <script type="importmap">
 {
@@ -35,7 +44,7 @@
     "react": "https://esm.sh/react@^19.0.0",
     "react-dom": "https://esm.sh/react-dom@^19.0.0",
     "lucide-react": "https://esm.sh/lucide-react@^0.474.0",
-    "@google/genai": "https://esm.sh/@google/genai@^0.2.1",
+    "@google/genai": "https://esm.sh/@google/genai@0.2.1",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.48.1",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/"

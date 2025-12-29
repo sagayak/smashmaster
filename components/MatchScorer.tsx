@@ -103,7 +103,6 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
     if (match.status === 'scheduled') {
       onUpdate({ ...match, status: 'live' });
     }
-    // Prevent scrolling on mobile for better touch experience
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = 'auto';
@@ -113,7 +112,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   return (
     <div className="fixed inset-0 bg-slate-900 z-[60] flex flex-col p-4 sm:p-6 overflow-hidden select-none text-white">
       {/* Header Info */}
-      <div className="flex items-center justify-between mb-4 relative z-10">
+      <div className="flex items-center justify-between mb-2 relative z-10 shrink-0">
         <button onClick={onFinish} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-white font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">
           <ChevronLeft className="w-5 h-5" />
           Quit
@@ -121,7 +120,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
         
         <div className="flex flex-col items-center">
           {match.umpireNames && match.umpireNames.length > 0 && (
-            <div className="flex items-center gap-1.5 mb-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+            <div className="flex items-center gap-1.5 mb-1 px-3 py-0.5 bg-white/5 rounded-full border border-white/10">
               <UserCheck className="w-3 h-3 text-emerald-400" />
               <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">
                 Umpire: {match.umpireNames.join(", ")}
@@ -133,7 +132,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
           </span>
           <div className="flex gap-2">
             {Array.from({ length: match.format }).map((_, i) => (
-              <div key={i} className={`w-12 h-2 rounded-full transition-all duration-700 ${
+              <div key={i} className={`w-10 h-1.5 rounded-full transition-all duration-700 ${
                 i < match.scores.length ? 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-white/10'
               }`} />
             ))}
@@ -146,8 +145,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
       </div>
 
       {/* Main Score Area */}
-      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full min-h-0 mb-6">
-        {/* Team 1 Score Card */}
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full min-h-0 mb-4 overflow-visible">
         <ScoreSide 
           team={team1} 
           score={t1Score} 
@@ -160,7 +158,6 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
           side="1"
         />
 
-        {/* Team 2 Score Card */}
         <ScoreSide 
           team={team2} 
           score={t2Score} 
@@ -175,34 +172,30 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
       </div>
 
       {/* Bottom Bar Actions */}
-      <div className="flex items-center justify-between gap-6 relative z-10 px-2">
+      <div className="flex items-center justify-between gap-4 relative z-10 px-2 shrink-0">
         <button 
           onClick={resetGameScore}
-          className="p-5 bg-white/5 border border-white/10 rounded-3xl text-white/30 hover:text-red-400 hover:bg-white/10 transition-all shadow-xl"
+          className="p-4 bg-white/5 border border-white/10 rounded-2xl text-white/30 hover:text-red-400 hover:bg-white/10 transition-all shadow-xl"
           title="Reset Game"
         >
-          <RotateCw className="w-7 h-7" />
+          <RotateCw className="w-6 h-6" />
         </button>
 
         {canFinishGame ? (
           <button
             onClick={handleFinishGame}
-            className="flex-1 bg-white text-slate-900 py-6 rounded-[2.5rem] font-black text-xl sm:text-2xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4"
+            className="flex-1 bg-white text-slate-900 py-4 rounded-3xl font-black text-lg sm:text-xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4"
           >
-            <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600" />
-            SUBMIT GAME RESULT
+            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+            SUBMIT RESULT
           </button>
         ) : (
-          <div className="flex-1 bg-white/5 border border-white/10 rounded-[2.5rem] py-6 flex flex-col items-center justify-center">
-            <span className="text-white/40 font-black uppercase tracking-[0.3em] text-sm">Target: {match.pointsTarget} Points</span>
-            <div className="flex items-center gap-2 mt-1">
-               <Edit3 className="w-3 h-3 text-white/20" />
-               <span className="text-[10px] text-white/20 font-bold uppercase italic">Direct input enabled</span>
-            </div>
+          <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl py-4 flex flex-col items-center justify-center">
+            <span className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px] sm:text-xs">Target: {match.pointsTarget} Pts</span>
           </div>
         )}
 
-        <div className="w-16 hidden sm:block"></div>
+        <div className="w-14 hidden sm:block"></div>
       </div>
     </div>
   );
@@ -228,16 +221,15 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
   const accentBg = colorClass === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500';
 
   return (
-    <div className={`relative flex flex-col items-center justify-center p-4 sm:p-6 rounded-[3rem] border-4 transition-all duration-500 ${bgClasses}`}>
-      {/* Background large number */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[18rem] sm:text-[25rem] font-black leading-none select-none">
+    <div className={`relative flex flex-col items-center justify-center p-4 rounded-[2.5rem] border-4 transition-all duration-500 overflow-visible ${bgClasses}`}>
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[15rem] sm:text-[20rem] font-black leading-none select-none overflow-hidden">
         {side}
       </div>
 
       {/* Team Meta */}
-      <div className="text-center mb-4 sm:mb-6 relative z-10 w-full px-2">
-        <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2 drop-shadow-md truncate">{team.name}</h3>
-        <div className="flex items-center justify-center gap-1">
+      <div className="text-center mb-2 relative z-10 w-full px-2">
+        <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tight mb-1 drop-shadow-md truncate">{team.name}</h3>
+        <div className="flex items-center justify-center gap-1.5">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className={`w-8 h-1.5 rounded-full ${i < gamesWon ? accentBg : 'bg-white/10'}`} />
           ))}
@@ -245,30 +237,27 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
       </div>
 
       {/* Interactive Scoring Controls */}
-      <div className="flex items-center gap-4 sm:gap-6 relative z-10 w-full max-w-sm">
+      <div className="flex items-center gap-2 sm:gap-6 relative z-10 w-full max-w-sm px-2 overflow-visible">
         <button 
           onClick={onRemove}
-          className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center group active:scale-90"
+          className="flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center group active:scale-90"
         >
           <Minus className="w-8 h-8 sm:w-10 sm:h-10 text-white/40 group-hover:text-white" />
         </button>
 
-        <div className="flex-1 relative flex items-center justify-center group min-w-0">
+        <div className="flex-1 relative flex items-center justify-center group min-w-0 overflow-visible">
           <input 
             type="number" 
             value={score}
             onChange={(e) => onInput(e.target.value)}
-            className="w-full text-7xl sm:text-8xl md:text-[10rem] font-black tabular-nums leading-tight tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 cursor-text selection:bg-indigo-500/30 overflow-visible"
-            style={{ height: '1.2em' }}
+            className="w-full text-7xl sm:text-8xl md:text-[10rem] font-black tabular-nums leading-none tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 cursor-text selection:bg-indigo-500/30 overflow-visible py-2"
+            style={{ minHeight: '1.2em', height: 'auto' }}
           />
-          <div className="absolute -bottom-4 opacity-30 group-focus-within:opacity-100 transition-opacity">
-            <Edit3 className="w-5 h-5" />
-          </div>
         </div>
 
         <button 
           onClick={onAdd}
-          className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full border transition-all flex items-center justify-center group active:scale-90 shadow-2xl ${
+          className={`flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full border transition-all flex items-center justify-center group active:scale-90 shadow-2xl ${
             colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400' : 'bg-emerald-500 border-emerald-400'
           }`}
         >
@@ -276,9 +265,8 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
         </button>
       </div>
 
-      {/* Quick Add Overlay Hint (Visible on large screens) */}
-      <div className="mt-8 text-white/20 font-bold uppercase tracking-[0.2em] text-[10px] hidden sm:block">
-        Click + to increment or type score above
+      <div className="mt-2 text-white/20 font-bold uppercase tracking-[0.2em] text-[9px] hidden sm:block">
+        Tap to adjust score directly
       </div>
     </div>
   );
