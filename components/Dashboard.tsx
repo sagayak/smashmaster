@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save, Medal, Settings2, Sparkles } from 'lucide-react';
+import { Users, Swords, Trophy, Play, Plus, History, ArrowRight, RotateCcw, Trash2, Lock, Share2, Check, UserPlus, Key, Eye, EyeOff, ShieldCheck, Save, Medal, Settings2, Sparkles, X } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament } from '../types';
 import { GoogleGenAI } from "@google/genai";
 
@@ -15,13 +15,17 @@ interface DashboardProps {
   tournament?: Tournament;
   onUpdateTournament: (updated: Tournament) => void;
   onSelectTeam: (id: string) => void;
+  onAddTeam: (team: Team) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament, onSelectTeam }) => {
+const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament, onSelectTeam, onAddTeam }) => {
   const [copied, setCopied] = useState(false);
   const [isEditingFormat, setIsEditingFormat] = useState(false);
   const [isGeneratingMotto, setIsGeneratingMotto] = useState(false);
   const [tournamentMotto, setTournamentMotto] = useState<string | null>(null);
+  
+  const [quickTeamName, setQuickTeamName] = useState('');
+  const [isAddingQuick, setIsAddingQuick] = useState(false);
 
   const activeMatches = matches.filter(m => m.status === 'live');
 
@@ -37,15 +41,33 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     setIsEditingFormat(false);
   };
 
+  const handleQuickAddSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickTeamName.trim() || !tournament) return;
+    
+    onAddTeam({
+      id: crypto.randomUUID(),
+      tournamentId: tournament.id,
+      name: quickTeamName.trim(),
+      members: ['Player 1', 'Player 2']
+    });
+    
+    setQuickTeamName('');
+    setIsAddingQuick(false);
+  };
+
+  // Fixed GoogleGenAI initialization and response handling
   const generateMotto = async () => {
     if (!tournament) return;
     setIsGeneratingMotto(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      // Create a new GoogleGenAI instance right before making an API call to ensure it uses the current key.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Create a short, catchy, and inspiring 1-sentence motto for a badminton tournament named "${tournament.name}". Return only the motto text, no quotes or explanations.`,
       });
+      // response.text is a property, not a method.
       setTournamentMotto(response.text?.trim() || null);
     } catch (err) {
       console.error("AI Error:", err);
@@ -63,16 +85,22 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
             <div className="relative">
               <button 
                 onClick={() => isAdmin && setIsEditingFormat(!isEditingFormat)}
-                className={`bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border border-indigo-100 flex items-center gap-2 transition-all ${isAdmin ? 'hover:bg-indigo-100 cursor-pointer' : 'cursor-default'}`}
+                className={`bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider border-b-4 border-indigo-800 flex items-center gap-2 transition-all hover:bg-indigo-700 active:translate-y-0.5 active:border-b-0`}
               >
-                <Settings2 className="w-3 h-3" />
+                <Settings2 className="w-3.5 h-3.5" />
                 Format: {tournament?.format}
               </button>
               {isEditingFormat && isAdmin && (
-                <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 min-w-[180px] animate-in slide-in-from-top-2">
-                  <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Select Mode</div>
-                  <button onClick={() => updateFormat('League')} className="w-full text-left px-4 py-2 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors">League Table</button>
-                  <button onClick={() => updateFormat('Knockout')} className="w-full text-left px-4 py-2 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors">Knockout Bracket</button>
+                <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 min-w-[200px] animate-in slide-in-from-top-2">
+                  <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Select Tournament Type</div>
+                  <button onClick={() => updateFormat('League')} className="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors flex items-center justify-between">
+                    League Table
+                    {tournament?.format === 'League' && <Check className="w-4 h-4 text-emerald-500" />}
+                  </button>
+                  <button onClick={() => updateFormat('Knockout')} className="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors flex items-center justify-between">
+                    Knockout Bracket
+                    {tournament?.format === 'Knockout' && <Check className="w-4 h-4 text-emerald-500" />}
+                  </button>
                 </div>
               )}
             </div>
@@ -101,15 +129,45 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
           </button>
           {isAdmin && (
             <button 
-              onClick={() => onNavigate('teams')}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-600 text-white px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95"
+              onClick={() => setIsAddingQuick(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 active:scale-95"
             >
-              <UserPlus className="w-4 h-4" />
+              <Plus className="w-4 h-4" />
               Add Teams
             </button>
           )}
         </div>
       </div>
+
+      {isAddingQuick && isAdmin && (
+        <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-2xl animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-xl">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tight">Quick Add Team</h3>
+            </div>
+            <button onClick={() => setIsAddingQuick(false)} className="text-white/50 hover:text-white transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <form onSubmit={handleQuickAddSubmit} className="flex flex-col sm:flex-row gap-4">
+            <input 
+              autoFocus
+              required
+              type="text"
+              placeholder="Enter Team Name (e.g. Smash Kings)"
+              value={quickTeamName}
+              onChange={(e) => setQuickTeamName(e.target.value)}
+              className="flex-1 bg-white/10 border-2 border-white/20 rounded-2xl px-6 py-4 text-white placeholder:text-white/40 font-bold text-lg outline-none focus:border-white transition-all"
+            />
+            <button type="submit" className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-50 transition-all active:scale-95">
+              Save Team
+            </button>
+          </form>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard icon={<Users className="w-6 h-6 text-indigo-600" />} label="Total Teams" value={teams.length} onClick={() => onNavigate('teams')} color="indigo" />
@@ -149,7 +207,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                       </div>
                       <div className="flex flex-col items-center flex-1">
                         <div className="text-[9px] sm:text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">LIVE SCORE</div>
-                        <div className="bg-slate-900 text-white px-6 sm:px-8 py-2 rounded-xl font-black text-lg sm:text-2xl tabular-nums shadow-lg whitespace-nowrap min-w-[120px] text-center">
+                        <div className="bg-slate-900 text-white px-6 sm:px-10 py-3 rounded-xl font-black text-lg sm:text-2xl tabular-nums leading-tight shadow-lg whitespace-nowrap min-w-[140px] text-center border-b-4 border-indigo-500">
                           {m.scores[m.scores.length - 1]?.team1 || 0} - {m.scores[m.scores.length - 1]?.team2 || 0}
                         </div>
                         <div className="text-[8px] font-bold text-slate-400 mt-2 uppercase">Game {m.scores.length}</div>

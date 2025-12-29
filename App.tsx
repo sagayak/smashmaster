@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Trophy, 
@@ -137,6 +136,15 @@ const App: React.FC = () => {
       if (selectedTournamentId === id) setSelectedTournamentId(null);
     } catch (err: any) {
       alert(`Error deleting tournament: ${err.message}`);
+    }
+  };
+
+  const handleAddTeam = async (team: Team) => {
+    try {
+      await api.saveTeam(team);
+      fetchData();
+    } catch (err: any) {
+      alert(`Error adding team: ${err.message}`);
     }
   };
 
@@ -440,9 +448,10 @@ const App: React.FC = () => {
             isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} tournament={currentTournament}
             onUpdateTournament={handleUpdateTournament}
             onSelectTeam={handleSelectTeamForDashboard}
+            onAddTeam={handleAddTeam}
           />
         )}
-        {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={async (t) => { if(!isAdmin) return setShowPinModal(true); await api.saveTeam(t); fetchData(); }} onUpdate={handleUpdateTeam} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={handleAddTeam} onUpdate={handleUpdateTeam} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
         {view === 'matches' && (
           <MatchManager 
             teams={teams} 

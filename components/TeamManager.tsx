@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Plus, Trash2, Users, UserPlus, X, Lock, ExternalLink, Activity, Trophy, Clock, UserCheck, History, BarChart3, Play, Edit2, LayoutDashboard } from 'lucide-react';
+import { Plus, Trash2, Users, UserPlus, X, Lock, ExternalLink, Activity, Trophy, Clock, UserCheck, History, BarChart3, Play, Edit2, LayoutDashboard, FileText } from 'lucide-react';
 import { Team, Match } from '../types';
 
 interface TeamManagerProps {
@@ -17,9 +16,11 @@ interface TeamManagerProps {
 
 const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId, onAdd, onUpdate, onRemove, onSelectTeam, isAdmin, onAdminLogin }) => {
   const [isAdding, setIsAdding] = useState(false);
+  const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   
   const [newTeamName, setNewTeamName] = useState('');
+  const [bulkInput, setBulkInput] = useState('');
   const [members, setMembers] = useState<string[]>(['', '', '']); 
 
   const handleAddMember = () => {
@@ -53,12 +54,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
     setNewTeamName(team.name);
     setMembers([...team.members]);
     setIsAdding(false);
+    setIsBulkAdding(false);
   };
 
   const handleCancel = () => {
     setIsAdding(false);
+    setIsBulkAdding(false);
     setEditingTeamId(null);
     setNewTeamName('');
+    setBulkInput('');
     setMembers(['', '', '']);
   };
 
@@ -92,6 +96,25 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
     handleCancel();
   };
 
+  const handleBulkSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    
+    const lines = bulkInput.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+
+    lines.forEach(name => {
+      onAdd({
+        id: crypto.randomUUID(),
+        tournamentId,
+        name: name,
+        members: ['Player 1'] // Default member for bulk add
+      });
+    });
+
+    handleCancel();
+  };
+
   const calculateTeamStats = (team: Team) => {
     const teamMatches = matches.filter(m => m.team1Id === team.id || m.team2Id === team.id);
     const scheduled = teamMatches.filter(m => m.status === 'scheduled' || m.status === 'live').length;
@@ -113,13 +136,22 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
           <p className="text-slate-500">Manage participants and review performance summaries</p>
         </div>
         {isAdmin ? (
-          <button
-            onClick={() => { setIsAdding(true); setEditingTeamId(null); setNewTeamName(''); setMembers(['', '', '']); }}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm active:scale-95"
-          >
-            <Plus className="w-5 h-5" />
-            Add Team
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setIsBulkAdding(true); setIsAdding(false); setEditingTeamId(null); }}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition-all shadow-sm active:scale-95 border border-slate-200"
+            >
+              <FileText className="w-5 h-5" />
+              Bulk Add
+            </button>
+            <button
+              onClick={() => { setIsAdding(true); setIsBulkAdding(false); setEditingTeamId(null); setNewTeamName(''); setMembers(['', '', '']); }}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm active:scale-95"
+            >
+              <Plus className="w-5 h-5" />
+              Add Team
+            </button>
+          </div>
         ) : (
           <button
             onClick={onAdminLogin}
@@ -130,6 +162,38 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
           </button>
         )}
       </div>
+
+      {isBulkAdding && isAdmin && (
+        <div className="bg-white border-2 border-dashed border-indigo-200 rounded-xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+          <h3 className="text-lg font-bold text-slate-900 mb-2">Bulk Add Teams</h3>
+          <p className="text-sm text-slate-500 mb-4">Paste team names below, one team per line.</p>
+          <form onSubmit={handleBulkSubmit} className="space-y-4">
+            <textarea
+              required
+              rows={6}
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              placeholder="Team Alpha&#10;Team Bravo&#10;Team Charlie"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm leading-relaxed"
+            />
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                className="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg font-semibold hover:bg-indigo-700 shadow-sm transition-all"
+              >
+                Import Teams
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-6 py-2.5 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {(isAdding || editingTeamId) && isAdmin && (
         <div className="bg-white border border-indigo-100 rounded-xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
@@ -204,17 +268,26 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {teams.length === 0 && !isAdding && !editingTeamId && (
+        {teams.length === 0 && !isAdding && !editingTeamId && !isBulkAdding && (
           <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200">
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No teams added yet.</p>
             {isAdmin && (
-              <button 
-                onClick={() => setIsAdding(true)}
-                className="mt-4 text-indigo-600 font-semibold hover:underline"
-              >
-                Start by adding your first team
-              </button>
+              <div className="mt-4 flex justify-center gap-4">
+                <button 
+                  onClick={() => setIsAdding(true)}
+                  className="text-indigo-600 font-semibold hover:underline"
+                >
+                  Add your first team
+                </button>
+                <span className="text-slate-300">|</span>
+                <button 
+                  onClick={() => setIsBulkAdding(true)}
+                  className="text-slate-600 font-semibold hover:underline"
+                >
+                  Bulk Import
+                </button>
+              </div>
             )}
           </div>
         )}

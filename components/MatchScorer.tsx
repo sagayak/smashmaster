@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Match, Team, GameScore, MatchStatus } from '../types';
 import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3 } from 'lucide-react';
@@ -112,7 +111,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   return (
     <div className="fixed inset-0 bg-slate-900 z-[60] flex flex-col p-4 sm:p-6 overflow-hidden select-none text-white">
       {/* Header Info */}
-      <div className="flex items-center justify-between mb-2 relative z-10 shrink-0">
+      <div className="flex items-center justify-between mb-4 relative z-10 shrink-0">
         <button onClick={onFinish} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-white font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">
           <ChevronLeft className="w-5 h-5" />
           Quit
@@ -127,7 +126,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
               </span>
             </div>
           )}
-          <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-1">
+          <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-1 text-center">
              Game {match.scores.length + 1} of {match.format}
           </span>
           <div className="flex gap-2">
@@ -227,11 +226,11 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
       </div>
 
       {/* Team Meta */}
-      <div className="text-center mb-2 relative z-10 w-full px-2">
-        <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tight mb-1 drop-shadow-md truncate">{team.name}</h3>
+      <div className="text-center mb-4 relative z-10 w-full px-2">
+        <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2 drop-shadow-md truncate leading-tight">{team.name}</h3>
         <div className="flex items-center justify-center gap-1.5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className={`w-8 h-1.5 rounded-full ${i < gamesWon ? accentBg : 'bg-white/10'}`} />
+            <div key={i} className={`w-10 h-2 rounded-full ${i < gamesWon ? accentBg : 'bg-white/10'}`} />
           ))}
         </div>
       </div>
@@ -240,32 +239,33 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
       <div className="flex items-center gap-2 sm:gap-6 relative z-10 w-full max-w-sm px-2 overflow-visible">
         <button 
           onClick={onRemove}
-          className="flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center group active:scale-90"
+          className="flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center group active:scale-90"
         >
-          <Minus className="w-8 h-8 sm:w-10 sm:h-10 text-white/40 group-hover:text-white" />
+          <Minus className="w-8 h-8 sm:w-12 sm:h-12 text-white/40 group-hover:text-white" />
         </button>
 
         <div className="flex-1 relative flex items-center justify-center group min-w-0 overflow-visible">
+          {/* We use a higher line-height and specific font settings to prevent trimming */}
           <input 
             type="number" 
             value={score}
             onChange={(e) => onInput(e.target.value)}
-            className="w-full text-7xl sm:text-8xl md:text-[10rem] font-black tabular-nums leading-none tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 cursor-text selection:bg-indigo-500/30 overflow-visible py-2"
-            style={{ minHeight: '1.2em', height: 'auto' }}
+            className="w-full text-7xl sm:text-8xl md:text-[11rem] font-black tabular-nums tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 cursor-text selection:bg-indigo-500/30 overflow-visible py-6 leading-[1.2]"
+            style={{ height: 'auto', minHeight: '1.2em' }}
           />
         </div>
 
         <button 
           onClick={onAdd}
-          className={`flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full border transition-all flex items-center justify-center group active:scale-90 shadow-2xl ${
+          className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full border transition-all flex items-center justify-center group active:scale-90 shadow-2xl ${
             colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400' : 'bg-emerald-500 border-emerald-400'
           }`}
         >
-          <Plus className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+          <Plus className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
         </button>
       </div>
 
-      <div className="mt-2 text-white/20 font-bold uppercase tracking-[0.2em] text-[9px] hidden sm:block">
+      <div className="mt-4 text-white/20 font-bold uppercase tracking-[0.2em] text-[10px] hidden sm:block">
         Tap to adjust score directly
       </div>
     </div>
