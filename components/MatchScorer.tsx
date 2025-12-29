@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Match, Team, GameScore, MatchStatus } from '../types';
-import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3 } from 'lucide-react';
+import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3, Target } from 'lucide-react';
 
 interface MatchScorerProps {
   match: Match;
@@ -111,7 +111,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   return (
     <div className="fixed inset-0 bg-slate-900 z-[60] flex flex-col p-4 sm:p-6 overflow-hidden select-none text-white">
       {/* Header Info */}
-      <div className="flex items-center justify-between mb-4 relative z-10 shrink-0">
+      <div className="flex items-center justify-between mb-6 relative z-10 shrink-0">
         <button onClick={onFinish} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-white font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">
           <ChevronLeft className="w-5 h-5" />
           Quit
@@ -119,22 +119,51 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
         
         <div className="flex flex-col items-center">
           {match.umpireNames && match.umpireNames.length > 0 && (
-            <div className="flex items-center gap-1.5 mb-1 px-3 py-0.5 bg-white/5 rounded-full border border-white/10">
+            <div className="flex items-center gap-1.5 mb-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
               <UserCheck className="w-3 h-3 text-emerald-400" />
               <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">
                 Umpire: {match.umpireNames.join(", ")}
               </span>
             </div>
           )}
-          <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-1 text-center">
-             Game {match.scores.length + 1} of {match.format}
-          </span>
-          <div className="flex gap-2">
-            {Array.from({ length: match.format }).map((_, i) => (
-              <div key={i} className={`w-10 h-1.5 rounded-full transition-all duration-700 ${
-                i < match.scores.length ? 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-white/10'
-              }`} />
-            ))}
+          
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] text-center">
+              Match Progression
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {Array.from({ length: match.format }).map((_, i) => {
+              const isCompleted = i < match.scores.length;
+              const isCurrent = i === match.scores.length;
+              const winnerOfGame = isCompleted ? (match.scores[i].team1 > match.scores[i].team2 ? 1 : 2) : null;
+              
+              return (
+                <div key={i} className="flex flex-col items-center gap-1.5">
+                  <div 
+                    className={`relative h-2.5 rounded-full transition-all duration-500 overflow-hidden ${
+                      isCompleted 
+                        ? winnerOfGame === 1 
+                          ? 'bg-indigo-500 w-12 shadow-[0_0_12px_rgba(99,102,241,0.4)]' 
+                          : 'bg-emerald-500 w-12 shadow-[0_0_12px_rgba(16,185,129,0.4)]' 
+                        : isCurrent 
+                          ? 'bg-white/30 w-16 animate-pulse ring-2 ring-white/10' 
+                          : 'bg-white/10 w-8'
+                    }`}
+                  >
+                    {isCurrent && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_white]"></div>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`text-[8px] font-black uppercase tracking-tighter ${isCurrent ? 'text-white' : 'text-white/20'}`}>
+                    Game {i + 1}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -186,11 +215,15 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
             className="flex-1 bg-white text-slate-900 py-4 rounded-3xl font-black text-lg sm:text-xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4"
           >
             <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-            SUBMIT RESULT
+            SUBMIT GAME {match.scores.length + 1}
           </button>
         ) : (
           <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl py-4 flex flex-col items-center justify-center">
-            <span className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px] sm:text-xs">Target: {match.pointsTarget} Pts</span>
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px] sm:text-xs">Game Point: {match.pointsTarget}</span>
+            </div>
+            <div className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Awaiting winner conditions...</div>
           </div>
         )}
 
@@ -245,7 +278,6 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
         </button>
 
         <div className="flex-1 relative flex items-center justify-center group min-w-0 overflow-visible">
-          {/* We use a higher line-height and specific font settings to prevent trimming */}
           <input 
             type="number" 
             value={score}
@@ -258,7 +290,7 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
         <button 
           onClick={onAdd}
           className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full border transition-all flex items-center justify-center group active:scale-90 shadow-2xl ${
-            colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400' : 'bg-emerald-500 border-emerald-400'
+            colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-emerald-500 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
           }`}
         >
           <Plus className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
@@ -266,7 +298,7 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
       </div>
 
       <div className="mt-4 text-white/20 font-bold uppercase tracking-[0.2em] text-[10px] hidden sm:block">
-        Tap to adjust score directly
+        Tap center score to adjust directly
       </div>
     </div>
   );
