@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Match, Team, GameScore, MatchStatus } from '../types';
 import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3, Target } from 'lucide-react';
@@ -238,7 +239,7 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
   const accentBg = colorClass === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500';
 
   return (
-    <div className={`relative flex flex-col items-center justify-center p-4 rounded-[2.5rem] border-4 transition-all duration-500 overflow-visible ${bgClasses}`}>
+    <div className={`relative flex flex-col items-center justify-center p-4 rounded-[2.5rem] border-4 transition-all duration-500 overflow-hidden ${bgClasses}`}>
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[15rem] sm:text-[20rem] font-black leading-none select-none overflow-hidden">
         {side}
       </div>
@@ -252,26 +253,26 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-6 relative z-10 w-full max-w-sm px-2 overflow-visible">
+      <div className="flex items-center justify-between gap-2 sm:gap-6 relative z-10 w-full max-w-sm px-2">
         <button 
           onClick={onRemove}
-          className="flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center active:scale-90"
+          className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center active:scale-90"
         >
           <Minus className="w-8 h-8 sm:w-12 sm:h-12 text-white/40" />
         </button>
 
-        <div className="flex-1 relative flex items-center justify-center min-w-0">
+        <div className="flex-1 relative flex items-center justify-center min-w-[3ch]">
           <input 
             type="number" 
             value={score}
             onChange={(e) => onInput(e.target.value)}
-            className="w-full text-7xl sm:text-8xl md:text-[11rem] font-black tabular-nums tracking-tighter bg-transparent text-center outline-none border-none focus:ring-0 py-6 leading-[1.2]"
+            className="w-full text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tabular-nums bg-transparent text-center outline-none border-none focus:ring-0 py-2 leading-none"
           />
         </div>
 
         <button 
           onClick={onAdd}
-          className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full border transition-all flex items-center justify-center active:scale-90 shadow-2xl ${
+          className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border transition-all flex items-center justify-center active:scale-90 shadow-2xl ${
             colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400' : 'bg-emerald-500 border-emerald-400'
           }`}
         >

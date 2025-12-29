@@ -176,7 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
             ) : (
               <div className="space-y-4">
                 {activeMatches.map(m => (
-                  <div key={m.id} onClick={() => onNavigate('matches')} className="bg-white border-2 border-indigo-500/10 rounded-[2rem] p-6 flex justify-between items-center cursor-pointer hover:border-indigo-500 hover:shadow-xl transition-all group relative overflow-hidden">
+                  <div key={m.id} onClick={() => onNavigate('matches')} className="bg-white border-2 border-indigo-50/10 rounded-[2rem] p-6 flex justify-between items-center cursor-pointer hover:border-indigo-500 hover:shadow-xl transition-all group relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
                     <div className="flex items-center gap-4 sm:gap-8 flex-1 min-w-0">
                       <div className="text-center w-16">
@@ -185,7 +185,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                       </div>
                       <div className="flex flex-col items-center flex-1">
                         <div className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1">Live Score</div>
-                        <div className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-2xl tabular-nums leading-tight border-b-4 border-indigo-500">
+                        <div className="bg-slate-900 text-white min-w-[6rem] px-4 py-3 rounded-xl font-black text-2xl tabular-nums leading-tight border-b-4 border-indigo-500 text-center">
                           {m.scores[m.scores.length - 1]?.team1 || 0} - {m.scores[m.scores.length - 1]?.team2 || 0}
                         </div>
                       </div>

@@ -370,14 +370,14 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                             type="number" 
                             value={score.team1} 
                             onChange={(e) => handleScoreChange(idx, 1, e.target.value)}
-                            className="w-16 px-2 py-1.5 border-2 border-slate-100 rounded-lg text-center font-black outline-none focus:border-indigo-500"
+                            className="w-24 px-2 py-1.5 border-2 border-slate-100 rounded-lg text-center font-black outline-none focus:border-indigo-500"
                           />
                           <span className="text-slate-300 font-bold italic">VS</span>
                           <input 
                             type="number" 
                             value={score.team2} 
                             onChange={(e) => handleScoreChange(idx, 2, e.target.value)}
-                            className="w-16 px-2 py-1.5 border-2 border-slate-100 rounded-lg text-center font-black outline-none focus:border-indigo-500"
+                            className="w-24 px-2 py-1.5 border-2 border-slate-100 rounded-lg text-center font-black outline-none focus:border-indigo-500"
                           />
                         </div>
                         <button 
