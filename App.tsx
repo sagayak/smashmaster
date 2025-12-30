@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Trophy, 
@@ -308,7 +309,7 @@ const App: React.FC = () => {
 
   if (!selectedTournamentId && !loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen">
         <TournamentSelector 
           tournaments={tournaments}
           onSelect={setSelectedTournamentId}
@@ -331,23 +332,23 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div className="min-h-screen flex flex-col">
+      <header className="bg-white/40 backdrop-blur-xl border-b border-white/40 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setView('dashboard')}>
-                <div className="bg-indigo-600 p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+                <div className="bg-indigo-600 p-2 rounded-lg shadow-lg group-hover:scale-110 transition-transform">
                   <Trophy className="w-5 h-5 text-white" />
                 </div>
                 <div className="hidden sm:block">
-                  <h1 className="text-lg font-black text-slate-900 leading-tight">SmashMaster</h1>
-                  <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">
-                    {currentTournament?.name}
+                  <h1 className="text-lg font-black text-slate-900 leading-tight tracking-tight">SmashMaster</h1>
+                  <p className="text-[10px] text-indigo-700 font-black uppercase tracking-widest">
+                    {currentTournament?.name || 'Tournament'}
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedTournamentId(null)} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all">
+              <button onClick={() => setSelectedTournamentId(null)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/40 backdrop-blur-md hover:bg-white/60 text-slate-700 rounded-lg text-xs font-bold transition-all border border-white/60">
                 <LayoutGrid className="w-3.5 h-3.5" />
                 Switch
               </button>
@@ -358,14 +359,14 @@ const App: React.FC = () => {
               <NavButton active={view === 'teams' || view === 'team-dashboard'} icon={<Users className="w-4 h-4" />} label="Teams" onClick={() => setView('teams')} />
               <NavButton active={view === 'matches'} icon={<Swords className="w-4 h-4" />} label="Matches" onClick={() => setView('matches')} />
               <NavButton active={view === 'standings'} icon={<Trophy className="w-4 h-4" />} label="Rankings" onClick={() => setView('standings')} />
-              <div className="h-6 w-px bg-slate-200 mx-1"></div>
+              <div className="h-6 w-px bg-slate-300/40 mx-1"></div>
               {isAdmin || isScorer ? (
-                <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-sm font-bold">
+                <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-400/80 text-amber-900 hover:bg-amber-500/80 transition-colors text-sm font-bold backdrop-blur-md border border-amber-500/30">
                   {isAdmin ? <Unlock className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4 text-emerald-600" />}
                   <span className="hidden md:inline">{isAdmin ? 'Admin' : 'Scorer'}</span>
                 </button>
               ) : (
-                <button onClick={() => setShowPinModal(true)} className="flex items-center gap-2 px-3 py-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors text-sm font-medium">
+                <button onClick={() => setShowPinModal(true)} className="flex items-center gap-2 px-3 py-2 rounded-md text-slate-600 hover:bg-white/40 transition-colors text-sm font-bold">
                   <Lock className="w-4 h-4" />
                   <span className="hidden md:inline">Login</span>
                 </button>
@@ -376,69 +377,13 @@ const App: React.FC = () => {
       </header>
 
       {showPinModal && <PinModal title="Admin Authentication" pinInput={pinInput} setPinInput={setPinInput} onSubmit={handlePinSubmit} onCancel={() => setShowPinModal(false)} />}
-      {showScorerModal && <PinModal title="Scorer Authentication" description="Enter the match access code to start scoring." pinInput={pinInput} setPinInput={setPinInput} onSubmit={handleScorerSubmit} onCancel={() => setShowScorerModal(false)} />}
+      {showScorerModal && <PinModal title="Scorer Authentication" description="Enter match access code." pinInput={pinInput} setPinInput={setPinInput} onSubmit={handleScorerSubmit} onCancel={() => setShowScorerModal(false)} />}
       
-      {showUmpireModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex flex-col items-center text-center mb-6">
-              <div className="bg-emerald-100 p-3 rounded-full mb-4">
-                <UserCheck className="w-6 h-6 text-emerald-600" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">Match Officials</h3>
-              <p className="text-slate-500 text-sm mt-1">Select exactly two teams to serve as umpires for this tie-up.</p>
-            </div>
-            <form onSubmit={handleUmpireSubmit} className="space-y-5">
-              <div className="space-y-3">
-                {[0, 1].map((i) => (
-                  <div key={i} className="flex flex-col gap-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Umpire Team {i+1}</label>
-                    <select 
-                      required
-                      value={umpireInput[i]}
-                      onChange={(e) => {
-                        const next = [...umpireInput];
-                        next[i] = e.target.value;
-                        setUmpireInput(next);
-                      }}
-                      className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:border-indigo-500 transition-all"
-                    >
-                      <option value="">-- Select Umpire Team --</option>
-                      {eligibleUmpireTeams.map(t => (
-                        <option key={t.id} value={t.name} disabled={umpireInput.includes(t.name) && umpireInput[i] !== t.name}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col gap-2 pt-2">
-                <button 
-                  type="submit" 
-                  disabled={umpireInput.some(u => !u)}
-                  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg active:scale-95 transition-all disabled:opacity-50"
-                >
-                  Proceed to Scoreboard
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => { setShowUmpireModal(false); setView('scorer'); }} 
-                  className="w-full bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all text-xs"
-                >
-                  Skip Umpires
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
         {(loading || isRefreshing) && (
-          <div className="absolute inset-0 bg-slate-50/50 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pt-20">
+          <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pt-20">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-            <p className="text-slate-500 font-medium">Syncing...</p>
+            <p className="text-slate-700 font-bold">Syncing Data...</p>
           </div>
         )}
 
@@ -492,15 +437,15 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-slate-500 text-sm">
-          <div>&copy; SmashMaster Pro • {currentTournament?.name}</div>
+      <footer className="bg-white/20 backdrop-blur-md border-t border-white/20 py-4 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-slate-700 text-sm font-bold">
+          <div>SmashMaster Pro • {currentTournament?.name || 'Tournament'}</div>
           <div className="flex items-center gap-4">
-            <button onClick={() => fetchData(true)} disabled={isRefreshing} className="flex items-center gap-2 text-indigo-600 font-bold hover:text-indigo-800 disabled:opacity-50">
+            <button onClick={() => fetchData(true)} disabled={isRefreshing} className="flex items-center gap-2 text-indigo-700 hover:text-indigo-900 transition-colors">
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync
             </button>
-            <div className="flex items-center gap-2 text-xs bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-              <Save className="w-3 h-3 text-emerald-500" /> Saved: {lastSaved}
+            <div className="flex items-center gap-2 text-xs bg-white/40 px-3 py-1 rounded-full border border-white/40 shadow-sm">
+              <Save className="w-3 h-3 text-emerald-600" /> {lastSaved}
             </div>
           </div>
         </div>
@@ -510,20 +455,20 @@ const App: React.FC = () => {
 };
 
 const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCancel }: any) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-    <div className="bg-white rounded-2xl p-8 max-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+    <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 max-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
       <div className="flex flex-col items-center text-center mb-6">
         <div className="bg-indigo-100 p-3 rounded-full mb-4">
           <Lock className="w-6 h-6 text-indigo-600" />
         </div>
         <h3 className="text-xl font-bold text-slate-900">{title}</h3>
-        <p className="text-slate-500 text-sm mt-1">{description || "Enter valid credentials to continue."}</p>
+        <p className="text-slate-600 text-sm mt-1">{description || "Enter valid credentials."}</p>
       </div>
       <form onSubmit={onSubmit} className="space-y-4">
-        <input autoFocus type="password" value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="Passcode" className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black" />
+        <input autoFocus type="password" value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="PIN" className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black bg-white" />
         <div className="flex gap-3">
-          <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">Enter</button>
-          <button type="button" onClick={onCancel} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
+          <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg">Enter</button>
+          <button type="button" onClick={onCancel} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all">Cancel</button>
         </div>
       </form>
     </div>
@@ -531,7 +476,7 @@ const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCance
 );
 
 const NavButton = ({ active, icon, label, onClick }: any) => (
-  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium whitespace-nowrap ${active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'}`}>
+  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm font-bold whitespace-nowrap ${active ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-700 hover:bg-white/40'}`}>
     {icon} <span className="hidden sm:inline">{label}</span>
   </button>
 );
