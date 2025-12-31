@@ -86,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
               )}
             </div>
           </div>
-          <p className="text-slate-700 font-bold text-sm">Real-time badminton tournament management.</p>
+          <p className="text-slate-700 font-bold text-sm">Real-time tournament tracking & manual tie-ups.</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button 

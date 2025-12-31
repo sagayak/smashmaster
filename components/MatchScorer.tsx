@@ -112,46 +112,42 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   return (
     <div className="fixed inset-0 bg-slate-900 z-[60] flex flex-col p-4 sm:p-6 overflow-hidden select-none text-white">
       {/* Header Info */}
-      <div className="flex items-center justify-between mb-6 relative z-10 shrink-0">
-        <button onClick={onFinish} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-white font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">
-          <ChevronLeft className="w-5 h-5" />
-          Quit
+      <div className="flex items-center justify-between mb-8 relative z-10 shrink-0">
+        <button onClick={onFinish} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">
+          <ChevronLeft className="w-4 h-4" />
+          Exit
         </button>
         
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] text-center">
-              Match Progression
-            </span>
-          </div>
+          <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.5em] mb-3">
+            Game Progress
+          </span>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {Array.from({ length: match.format }).map((_, i) => {
               const isCompleted = i < match.scores.length;
               const isCurrent = i === match.scores.length;
               const winnerOfGame = isCompleted ? (match.scores[i].team1 > match.scores[i].team2 ? 1 : 2) : null;
               
               return (
-                <div key={i} className="flex flex-col items-center gap-1.5">
+                <div key={i} className="flex flex-col items-center gap-2">
                   <div 
-                    className={`relative h-2.5 rounded-full transition-all duration-500 overflow-hidden ${
+                    className={`h-1.5 w-12 sm:w-16 rounded-full transition-all duration-500 overflow-hidden relative ${
                       isCompleted 
                         ? winnerOfGame === 1 
-                          ? 'bg-indigo-500 w-12' 
-                          : 'bg-emerald-500 w-12' 
+                          ? 'bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.5)]' 
+                          : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' 
                         : isCurrent 
-                          ? 'bg-white/30 w-16 animate-pulse ring-2 ring-white/10' 
-                          : 'bg-white/10 w-8'
+                          ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.4)] animate-pulse' 
+                          : 'bg-white/10'
                     }`}
                   >
                     {isCurrent && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_white]"></div>
-                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-[shimmer_2s_infinite]"></div>
                     )}
                   </div>
-                  <span className={`text-[8px] font-black uppercase tracking-tighter ${isCurrent ? 'text-white' : 'text-white/20'}`}>
-                    G{i + 1}
+                  <span className={`text-[9px] font-black uppercase tracking-tighter ${isCurrent ? 'text-white' : 'text-white/20'}`}>
+                    Game {i + 1}
                   </span>
                 </div>
               );
@@ -159,7 +155,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
           </div>
         </div>
 
-        <button onClick={undoPoint} disabled={history.length === 0} className="bg-white/10 px-4 py-2 rounded-xl text-white font-black text-xs uppercase tracking-widest border border-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+        <button onClick={undoPoint} disabled={history.length === 0} className="bg-white/10 px-4 py-2 rounded-xl text-white font-black text-[10px] uppercase tracking-widest border border-white/10 hover:bg-white/20 disabled:opacity-20 disabled:cursor-not-allowed transition-all">
            Undo
         </button>
       </div>
@@ -204,17 +200,24 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
         {canFinishGame ? (
           <button
             onClick={handleFinishGame}
-            className="flex-1 bg-white text-slate-900 py-4 rounded-3xl font-black text-lg sm:text-xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4"
+            className="flex-1 bg-white text-slate-900 py-5 rounded-3xl font-black text-lg sm:text-xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4"
           >
             <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-            FINISH GAME {match.scores.length + 1}
+            END GAME {match.scores.length + 1}
           </button>
         ) : (
-          <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl py-4 flex flex-col items-center justify-center">
-            <span className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px] sm:text-xs">Game Point: {match.pointsTarget}</span>
+          <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl py-5 flex flex-col items-center justify-center">
+            <span className="text-white/40 font-black uppercase tracking-[0.4em] text-[10px]">Target Score: {match.pointsTarget}</span>
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   );
 };
@@ -233,32 +236,33 @@ interface ScoreSideProps {
 
 const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, onAdd, onRemove, onInput, colorClass, side }) => {
   const bgClasses = colorClass === 'indigo' 
-    ? (isActive ? 'bg-indigo-600/20 border-indigo-500/50' : 'bg-white/5 border-white/5')
-    : (isActive ? 'bg-emerald-600/20 border-emerald-500/50' : 'bg-white/5 border-white/5');
+    ? (isActive ? 'bg-indigo-600/20 border-indigo-500/50 shadow-[inset_0_0_50px_rgba(99,102,241,0.1)]' : 'bg-white/5 border-white/5')
+    : (isActive ? 'bg-emerald-600/20 border-emerald-500/50 shadow-[inset_0_0_50px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/5');
   
   const accentBg = colorClass === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500';
 
   return (
-    <div className={`relative flex flex-col items-center justify-center p-4 rounded-[2.5rem] border-4 transition-all duration-500 overflow-hidden ${bgClasses}`}>
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[15rem] sm:text-[20rem] font-black leading-none select-none overflow-hidden">
+    <div className={`relative flex flex-col items-center justify-center p-4 rounded-[3rem] border-4 transition-all duration-500 overflow-hidden ${bgClasses}`}>
+      {/* Background large side indicator */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] text-[20rem] sm:text-[25rem] font-black leading-none select-none overflow-hidden translate-y-8">
         {side}
       </div>
 
-      <div className="text-center mb-4 relative z-10 w-full px-2">
-        <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2 drop-shadow-md truncate leading-tight">{team.name}</h3>
-        <div className="flex items-center justify-center gap-1.5">
+      <div className="text-center mb-6 relative z-10 w-full px-4">
+        <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-3 drop-shadow-md truncate leading-tight">{team.name}</h3>
+        <div className="flex items-center justify-center gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className={`w-10 h-2 rounded-full ${i < gamesWon ? accentBg : 'bg-white/10'}`} />
+            <div key={i} className={`w-10 h-1.5 rounded-full ${i < gamesWon ? accentBg : 'bg-white/10'}`} />
           ))}
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 sm:gap-6 relative z-10 w-full max-w-sm px-2">
+      <div className="flex items-center justify-between gap-4 sm:gap-8 relative z-10 w-full max-w-sm px-4">
         <button 
           onClick={onRemove}
-          className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center active:scale-90"
+          className="flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center active:scale-90"
         >
-          <Minus className="w-8 h-8 sm:w-12 sm:h-12 text-white/40" />
+          <Minus className="w-8 h-8 sm:w-12 sm:h-12 text-white/30" />
         </button>
 
         <div className="flex-1 relative flex items-center justify-center min-w-[3ch]">
@@ -266,13 +270,13 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
             type="number" 
             value={score}
             onChange={(e) => onInput(e.target.value)}
-            className="w-full text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tabular-nums bg-transparent text-center outline-none border-none focus:ring-0 py-2 leading-none"
+            className="w-full text-7xl sm:text-8xl md:text-9xl lg:text-[10rem] font-black tabular-nums bg-transparent text-center outline-none border-none focus:ring-0 py-4 leading-none min-h-[1.1em] drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
           />
         </div>
 
         <button 
           onClick={onAdd}
-          className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border transition-all flex items-center justify-center active:scale-90 shadow-2xl ${
+          className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full border transition-all flex items-center justify-center active:scale-90 shadow-2xl ${
             colorClass === 'indigo' ? 'bg-indigo-500 border-indigo-400' : 'bg-emerald-500 border-emerald-400'
           }`}
         >

@@ -377,7 +377,7 @@ const App: React.FC = () => {
       </header>
 
       {showPinModal && <PinModal title="Admin Authentication" pinInput={pinInput} setPinInput={setPinInput} onSubmit={handlePinSubmit} onCancel={() => setShowPinModal(false)} />}
-      {showScorerModal && <PinModal title="Scorer Authentication" description="Enter match access code." pinInput={pinInput} setPinInput={setPinInput} onSubmit={handleScorerSubmit} onCancel={() => setShowScorerModal(false)} />}
+      {showScorerModal && <PinModal title="Scorer Authentication" description="Enter match access code (Default: 0000)." pinInput={pinInput} setPinInput={setPinInput} onSubmit={handleScorerSubmit} onCancel={() => setShowScorerModal(false)} />}
       {showUmpireModal && (
         <UmpireModal 
           umpireInput={umpireInput} 
