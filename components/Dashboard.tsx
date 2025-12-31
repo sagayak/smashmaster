@@ -209,6 +209,69 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Live Matches & Guide */}
         <div className="lg:col-span-2 space-y-8">
+          {/* Tournament Readme Checklist */}
+          <section className="bg-white/40 backdrop-blur-xl border border-white/60 rounded-[2.5rem] p-8 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-indigo-600 p-3 rounded-2xl">
+                <ListChecks className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Tournament Manifesto</h3>
+                <p className="text-xs font-bold text-indigo-600/70 uppercase tracking-widest">Public Instructions & Format</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">Match Format</h4>
+                    <p className="text-[11px] text-slate-500 font-bold">Standard matches: Best of 3 sets to 21 points. Knockouts may vary.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">Top 4 Calculation</h4>
+                    <p className="text-[11px] text-slate-500 font-bold">Calculated by: 1. Match Wins, 2. Set Difference, 3. Point Difference (PD).</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">PD Calculation</h4>
+                    <p className="text-[11px] text-slate-500 font-bold">Point Difference = (Total Scored Points) - (Total Conceded Points).</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">Team Roster</h4>
+                    <p className="text-[11px] text-slate-500 font-bold">Currently {teams.length} teams active. View detailed squads in the Teams tab.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setShowHandbook(true)}
+              className="mt-8 w-full flex items-center justify-center gap-2 text-indigo-700 font-black uppercase tracking-widest text-[10px] hover:gap-4 transition-all"
+            >
+              View Full Scoring Guide <ChevronRight className="w-4 h-4" />
+            </button>
+          </section>
+
           {/* Live Activity */}
           <section>
             <div className="flex items-center justify-between mb-4 px-2">
@@ -220,7 +283,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
             {activeMatches.length === 0 ? (
               <div className="bg-white/30 backdrop-blur-lg border-2 border-dashed border-white/60 rounded-[2.5rem] p-12 text-center group">
                 <p className="text-slate-700 font-bold text-lg mb-4">No live matches at the moment.</p>
-                <button onClick={() => onNavigate('matches')} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition-all inline-flex items-center gap-2">
+                <button onClick={() => onNavigate('matches')} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition-all inline-flex items-center gap-2 shadow-lg">
                   Start New Match <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -234,7 +297,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                         <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center font-black text-indigo-700 mx-auto mb-1">{teams.find(t => t.id === m.team1Id)?.name.charAt(0)}</div>
                         <div className="font-bold text-slate-900 text-xs truncate">{teams.find(t => t.id === m.team1Id)?.name}</div>
                       </div>
-                      <div className="flex-1 text-center bg-slate-900 text-white py-3 rounded-2xl font-black text-3xl tabular-nums shadow-lg">
+                      <div className="flex-1 text-center bg-slate-900 text-white py-3 rounded-2xl font-black text-3xl tabular-nums shadow-lg border-b-4 border-indigo-500">
                         {m.scores[m.scores.length - 1]?.team1 || 0} : {m.scores[m.scores.length - 1]?.team2 || 0}
                       </div>
                       <div className="text-center w-24">
@@ -247,53 +310,10 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
               </div>
             )}
           </section>
-
-          {/* Tournament Guide Checklist */}
-          <section className="bg-indigo-600/10 backdrop-blur-xl border border-indigo-200/50 rounded-[2.5rem] p-8 shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-indigo-600 p-3 rounded-2xl">
-                <ListChecks className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Quick Handbook</h3>
-                <p className="text-xs font-bold text-indigo-600/70 uppercase tracking-widest">Everything you need to know</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <GuideItem 
-                title="Format of Game" 
-                desc="Standard matches are Best of 3 sets to 21 points. Finals can be set to Best of 5." 
-                icon={<Target className="w-4 h-4" />}
-              />
-              <GuideItem 
-                title="How Top 4 is Calculated" 
-                desc="Ranked by (1) Match Wins, (2) Total Sets Won, and finally (3) Point Difference." 
-                icon={<Trophy className="w-4 h-4" />}
-              />
-              <GuideItem 
-                title="Point Difference (PD)" 
-                desc="Cumulative total of your score minus opponent's score. High PD helps break ties." 
-                icon={<Activity className="w-4 h-4" />}
-              />
-              <GuideItem 
-                title="Adding Teams" 
-                desc="Total registered: ${teams.length}. New teams can be added via Quick Entry or Bulk Import." 
-                icon={<Users className="w-4 h-4" />}
-              />
-            </div>
-            
-            <button 
-              onClick={() => setShowHandbook(true)}
-              className="mt-8 w-full flex items-center justify-center gap-2 text-indigo-700 font-black uppercase tracking-widest text-xs hover:gap-4 transition-all"
-            >
-              Read full rules & logic <ChevronRight className="w-4 h-4" />
-            </button>
-          </section>
         </div>
 
         {/* Right Column: Mini Leaderboard */}
-        <section className="bg-slate-900/90 backdrop-blur-xl rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col">
+        <section className="bg-slate-900/90 backdrop-blur-xl rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
           <div className="p-8 border-b border-white/10 bg-white/5">
              <h3 className="font-black text-white text-2xl flex items-center gap-3 uppercase tracking-tighter italic">
                 <Trophy className="w-8 h-8 text-amber-400" />
@@ -326,18 +346,6 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     </div>
   );
 };
-
-const GuideItem = ({ title, desc, icon }: { title: string, desc: string, icon: React.ReactNode }) => (
-  <div className="flex gap-4 p-4 rounded-3xl bg-white/40 border border-white/60">
-    <div className="bg-indigo-600/10 p-2.5 rounded-xl h-fit text-indigo-600">
-      {icon}
-    </div>
-    <div>
-      <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight mb-1">{title}</h4>
-      <p className="text-[11px] font-bold text-slate-600 leading-relaxed">{desc}</p>
-    </div>
-  </div>
-);
 
 const HandbookSection = ({ title, icon, content, items }: { title: string, icon: React.ReactNode, content: string, items: { label: string, desc: string }[] }) => (
   <div className="space-y-3">
