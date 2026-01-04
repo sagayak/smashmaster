@@ -71,7 +71,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Tournament Rankings</h2>
-          <p className="text-slate-500 font-bold text-sm">Automated standings based on professional badminton logic</p>
+          <p className="text-slate-500 font-bold text-sm">Automated standings based on the 3-point weighted system</p>
         </div>
         
         <div className="flex items-center gap-2 bg-white/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/60 shadow-sm">
@@ -197,10 +197,9 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                 <tr className="bg-slate-50/80 border-b border-slate-200">
                   <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Rank</th>
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Team Identity</th>
+                  <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">PTS</th>
                   <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Tie-ups W/L</th>
                   <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Set Record</th>
-                  <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Points For</th>
-                  <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Points Agst</th>
                   <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Diff</th>
                   <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Details</th>
                 </tr>
@@ -235,10 +234,16 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                           {index < 4 && (
                             <div className="flex items-center gap-1.5 mt-1">
                                <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border border-indigo-200">
-                                 Elite Contentder
+                                 Elite Contender
                                </span>
                             </div>
                           )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-5 text-center">
+                        <div className="inline-flex flex-col items-center bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-indigo-100">
+                          <span className="font-black text-lg tabular-nums leading-none mb-1">{entry.points}</span>
+                          <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Points</span>
                         </div>
                       </td>
                       <td className="px-4 py-5 text-center">
@@ -248,18 +253,12 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                         </div>
                       </td>
                       <td className="px-4 py-5 text-center">
-                        <div className="inline-flex flex-col items-center bg-indigo-50/50 px-3 py-1 rounded-xl border border-indigo-100 shadow-sm">
-                          <span className="font-black text-indigo-700 text-sm tabular-nums">
+                        <div className="inline-flex flex-col items-center bg-slate-50 px-3 py-1 rounded-xl border border-slate-200">
+                          <span className="font-black text-slate-600 text-sm tabular-nums">
                             {entry.gamesWon} - {entry.gamesLost}
                           </span>
-                          <span className="text-[8px] font-black text-indigo-300 uppercase tracking-tighter">Sets</span>
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Sets</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-5 text-center font-bold text-slate-600 text-sm tabular-nums">
-                        {entry.pointsFor}
-                      </td>
-                      <td className="px-4 py-5 text-center font-bold text-slate-400 text-sm tabular-nums">
-                        {entry.pointsAgainst}
                       </td>
                       <td className="px-4 py-5 text-center">
                         <span className={`font-black px-3 py-1 rounded-full text-xs tabular-nums border ${
@@ -284,7 +283,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
             </table>
           </div>
           <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] italic">Standings are updated in real-time as match scores are recorded.</p>
+             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] italic">Points: 3 (2-0), 2 (2-1), 1 (1-2), 0 (0-2). Match Wins & Net Sets are Tie-breakers.</p>
           </div>
         </div>
       ) : (
@@ -301,7 +300,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
               <div>
                 <h3 className="text-3xl font-black italic tracking-tighter uppercase leading-none mb-2">PRO LEAGUE ELITE</h3>
                 <p className="text-indigo-300/60 font-black text-[10px] tracking-[0.2em] uppercase">
-                  Top 4 Contenders Performance Matrix
+                  Top 4 Performance Matrix (Weighted Scoring)
                 </p>
               </div>
             </div>
@@ -348,18 +347,18 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
                   <h4 className="font-black text-xl mb-6 truncate w-full tracking-tight">{t.teamName}</h4>
                   
                   <div className="grid grid-cols-2 gap-2 w-full">
+                    <div className="flex flex-col items-center justify-center bg-indigo-600/40 p-3 rounded-2xl border border-indigo-500/20 group-hover:bg-indigo-600 transition-colors">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-indigo-300 mb-1">Points</span>
+                      <span className="text-lg font-black text-white tabular-nums">{t.points}</span>
+                    </div>
                     <div className="flex flex-col items-center justify-center bg-white/5 p-3 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-colors">
                       <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">Wins</span>
                       <span className="text-lg font-black text-white tabular-nums">{t.wins}</span>
                     </div>
-                    <div className="flex flex-col items-center justify-center bg-white/5 p-3 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-colors">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">Sets</span>
-                      <span className="text-lg font-black text-indigo-400 tabular-nums">{t.gamesWon}</span>
-                    </div>
                   </div>
 
                   <div className={`mt-4 w-full py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${rankBg} ${rankColor} border border-white/5`}>
-                     Point Diff: {t.pointDiff > 0 ? `+${t.pointDiff}` : t.pointDiff}
+                     Net Sets: {t.gamesWon - t.gamesLost > 0 ? `+${t.gamesWon - t.gamesLost}` : t.gamesWon - t.gamesLost}
                   </div>
 
                   {isAdmin && !isSelected && pair1 && (
@@ -381,7 +380,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
           <div className="mt-12 flex justify-center">
             <div className="bg-white/5 px-6 py-3 rounded-2xl border border-white/5 text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-3">
                <Activity className="w-3 h-3 text-indigo-500" />
-               Live Real-time Scoring Integrated
+               League Ranking prioritizes Points (Straight Sets)
             </div>
           </div>
         </div>

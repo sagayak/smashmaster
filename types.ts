@@ -51,6 +51,7 @@ export interface Match {
 export interface StandingsEntry {
   teamId: string;
   teamName: string;
+  points: number; // New points system (3 for 2-0, 2 for 2-1)
   wins: number;
   losses: number;
   gamesWon: number;

@@ -38,34 +38,36 @@ const ADMIN_PIN = "1218";
 const DEFAULT_HANDBOOK: HandbookSectionData[] = [
   {
     id: '1',
-    title: '1. Ranking & Tie-Breakers',
+    title: '1. Ranking & 3-Point System',
     iconName: 'Trophy',
-    content: 'Final standings are calculated using a strict hierarchical logic to ensure fair competition:',
+    content: 'Final standings are calculated using an efficiency-weighted points system to reward straight-set dominance:',
     items: [
-      { label: 'Match Wins', desc: 'The primary metric. The team with the most overall match victories ranks highest.' },
-      { label: 'Set/Game Ratio', desc: 'Calculated as (Sets Won / Sets Played). Used if match wins are tied.' },
-      { label: 'Point Difference', desc: 'The total points scored across all sets minus total points conceded.' }
+      { label: '3 Points', desc: 'Awarded for a straight-sets victory (2-0). Considered equivalent to a 3-0 weighted win.' },
+      { label: '2 Points', desc: 'Awarded for a hard-fought victory (2-1).' },
+      { label: '1 Point', desc: 'Awarded to the losing team if they secured at least one set (1-2).' },
+      { label: '0 Points', desc: 'Awarded for a straight-sets loss (0-2).' }
     ]
   },
   {
     id: '2',
-    title: '2. Point Difference (PD)',
+    title: '2. Tie-Breaking Hierarchy',
     iconName: 'Activity',
-    content: 'PD is our ultimate tie-breaker. Every single point in every set matters for your final rank.',
+    content: 'If total tournament points are equal, the following tie-breakers apply in order:',
     items: [
-      { label: 'Logic', desc: 'PD = (Sum of Your Points) - (Sum of Opponent Points).' },
-      { label: 'Strategy', desc: 'Even if losing a match, keeping the score close (e.g., 28-30) protects your PD significantly more than a blowout.' }
+      { label: 'Match Wins', desc: 'The total number of overall match victories.' },
+      { label: 'Net Sets', desc: 'Calculated as (Total Sets Won - Total Sets Lost).' },
+      { label: 'Point Difference', desc: 'Total points scored minus total points conceded across all sets.' }
     ]
   },
   {
     id: '3',
     title: '3. Match Protocols',
     iconName: 'Target',
-    content: 'Standard match configurations for all tournament tie-ups(League Stage):',
+    content: 'Standard match configurations for all tournament tie-ups (League Stage):',
     items: [
       { label: 'Format', desc: 'Typically Best of 3 sets. The first team to win 2 sets wins the match.' },
-      { label: 'Scoring', desc: 'Rally point system. Sets are played to 30 points.' },
-      { label: 'Shuttles', desc: 'Teams should provide their own shuttles unless specified by the venue.' }
+      { label: 'Scoring', desc: 'Rally point system. Sets are played to 21 or 30 points as configured.' },
+      { label: 'Shuttles', desc: 'High-grade feather shuttles should be used for all league fixtures.' }
     ]
   },
   {
@@ -74,7 +76,7 @@ const DEFAULT_HANDBOOK: HandbookSectionData[] = [
     iconName: 'Users',
     content: 'To ensure smooth flow, teams are assigned officiating duties for other matches.',
     items: [
-      { label: 'Assignment', desc: 'Check the "Matches" tab. If your team is listed as an official, you must provide 2 umpires.' },
+      { label: 'Assignment', desc: 'Check the "Matches" tab. Assigned teams must provide 2 umpires.' },
       { label: 'Role', desc: 'Officials track the live score and announce set winners to the tournament desk.' }
     ]
   }
@@ -317,6 +319,7 @@ const App: React.FC = () => {
       stats[team.id] = {
         teamId: team.id,
         teamName: team.name,
+        points: 0,
         wins: 0,
         losses: 0,
         gamesWon: 0,
@@ -332,12 +335,27 @@ const App: React.FC = () => {
       const t2 = stats[match.team2Id];
       if (!t1 || !t2) return;
       
+      const t1Games = match.scores.filter(s => s.team1 > s.team2).length;
+      const t2Games = match.scores.filter(s => s.team2 > s.team1).length;
+
       if (match.winnerId === match.team1Id) {
         t1.wins += 1;
         t2.losses += 1;
+        // Points Calculation
+        if (t1Games === 2 && t2Games === 0) t1.points += 3; // 2-0 win
+        else if (t1Games === 2 && t2Games === 1) {
+          t1.points += 2; // 2-1 win
+          t2.points += 1; // 1-2 loss
+        }
       } else if (match.winnerId === match.team2Id) {
         t2.wins += 1;
         t1.losses += 1;
+        // Points Calculation
+        if (t2Games === 2 && t1Games === 0) t2.points += 3; // 0-2 win
+        else if (t2Games === 2 && t1Games === 1) {
+          t2.points += 2; // 1-2 win
+          t1.points += 1; // 2-1 loss
+        }
       }
 
       match.scores.forEach(game => {
@@ -359,8 +377,18 @@ const App: React.FC = () => {
     return Object.values(stats)
       .map(s => ({ ...s, pointDiff: s.pointsFor - s.pointsAgainst }))
       .sort((a, b) => {
+        // Priority 1: Tournament Points (3 for 2-0, 2 for 2-1, 1 for 1-2)
+        if (b.points !== a.points) return b.points - a.points;
+
+        // Priority 2: Match Wins
         if (b.wins !== a.wins) return b.wins - a.wins;
-        if (b.gamesWon !== a.gamesWon) return b.gamesWon - a.gamesWon;
+        
+        // Priority 3: Net Sets
+        const aNetGames = a.gamesWon - a.gamesLost;
+        const bNetGames = b.gamesWon - b.gamesLost;
+        if (bNetGames !== aNetGames) return bNetGames - aNetGames;
+        
+        // Priority 4: Point Difference
         return b.pointDiff - a.pointDiff;
       });
   }, [teams, matches]);

@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Swords, Trophy, Play, Plus, ArrowRight, RotateCcw, Lock, Share2, 
   Check, X, Medal, Settings2, CheckCircle2, BookOpen, Info, HelpCircle, 
-  Activity, ListChecks, Target, ChevronRight, Edit3, Trash2, GripVertical, PlusCircle, RefreshCcw
+  Activity, ListChecks, Target, ChevronRight, Edit3, Trash2, GripVertical, PlusCircle, RefreshCcw,
+  Printer, Download
 } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament, HandbookSectionData } from '../types';
 
@@ -24,33 +25,33 @@ interface DashboardProps {
 const DEFAULT_STRUCTURE: HandbookSectionData[] = [
   {
     id: '1',
-    title: '1. Ranking & Tie-Breakers',
+    title: '1. Ranking & 3-Point System',
     iconName: 'Trophy',
-    content: 'Standings are calculated using a hierarchical logic to ensure fair competition:',
+    content: 'Standings use a weighted point system to reward efficiency:',
     items: [
-      { label: 'Match Wins', desc: 'Primary metric. Most overall match victories ranks highest.' },
-      { label: 'Set Ratio', desc: 'Calculated as (Sets Won / Sets Played). Used if match wins are tied.' },
-      { label: 'Point Diff', desc: 'Total points scored minus total points conceded.' }
+      { label: '3-0 Weighting', desc: 'A 2-0 straight sets win awards 3 Tournament Points.' },
+      { label: 'Split Results', desc: 'A 2-1 win awards 2 Points; the loser gets 1 Point.' },
+      { label: 'Clean Loss', desc: 'A 0-2 loss awards 0 Points.' }
     ]
   },
   {
     id: '2',
-    title: '2. Point Difference (PD)',
+    title: '2. Efficiency Bonus',
     iconName: 'Activity',
-    content: 'PD is the ultimate tie-breaker. Every point in every set counts.',
+    content: 'The "Net Sets" logic remains the primary tie-breaker if points are equal.',
     items: [
-      { label: 'Calculation', desc: 'PD = (Sum of Your Points) - (Sum of Opponent Points).' },
-      { label: 'Strategy', desc: 'Losing 28-30 is significantly better for your rank than losing 10-30.' }
+      { label: 'Net Sets', desc: 'Total Sets Won - Total Sets Lost.' },
+      { label: 'Tie-Breaker', desc: 'Closing matches in straight sets is the best way to maintain rank.' }
     ]
   },
   {
     id: '3',
     title: '3. Match Protocols',
     iconName: 'Target',
-    content: 'Standard match configurations for all tournament tie-ups(League Stage):',
+    content: 'Standard match configurations for all tournament tie-ups (League Stage):',
     items: [
       { label: 'Format', desc: 'Best of 3 sets. First to win 2 sets wins the match.' },
-      { label: 'Scoring', desc: 'Rally point system. Sets played to 30 points.' }
+      { label: 'Scoring', desc: 'Rally point system (21 or 30 points per set).' }
     ]
   }
 ];
@@ -85,6 +86,43 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePrintHandbook = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const content = currentHandbook.map(section => `
+      <div style="margin-bottom: 40px; page-break-inside: avoid;">
+        <h2 style="font-family: sans-serif; border-bottom: 2px solid #6366f1; padding-bottom: 8px; margin-bottom: 12px; color: #1e293b;">${section.title}</h2>
+        <p style="font-family: sans-serif; color: #64748b; margin-bottom: 20px;">${section.content}</p>
+        <table style="width: 100%; border-collapse: collapse;">
+          ${section.items.map(item => `
+            <tr>
+              <td style="font-family: sans-serif; font-weight: bold; width: 150px; padding: 10px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; text-transform: uppercase;">${item.label}</td>
+              <td style="font-family: sans-serif; padding: 10px; border: 1px solid #e2e8f0; font-size: 14px;">${item.desc}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${tournament?.name || 'Tournament'} - Handbook</title>
+          <style>
+            body { padding: 40px; }
+            @page { margin: 20px; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <h1 style="font-family: sans-serif; text-align: center; margin-bottom: 50px;">${tournament?.name || 'Tournament'} Official Handbook</h1>
+          ${content}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const updateFormat = (format: 'League' | 'Knockout') => {
@@ -200,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
             className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
           >
             <BookOpen className="w-4 h-4" />
-            Full Handbook
+            Handbook
           </button>
           <button 
             onClick={handleShare}
@@ -239,15 +277,26 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                   <p className="text-sm font-bold text-slate-500">Official rules and scoring protocols</p>
                 </div>
               </div>
-              {isAdmin && !isEditingHandbook && (
-                <button 
-                  onClick={() => setIsEditingHandbook(true)}
-                  className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-100 transition-all flex items-center gap-2 font-black uppercase text-[10px] tracking-widest border border-indigo-100"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  Edit Rules
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {!isEditingHandbook && currentHandbook.length > 0 && (
+                  <button 
+                    onClick={handlePrintHandbook}
+                    className="p-3 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all border border-slate-100 shadow-sm"
+                    title="Export Handbook to PDF"
+                  >
+                    <Printer className="w-5 h-5" />
+                  </button>
+                )}
+                {isAdmin && !isEditingHandbook && (
+                  <button 
+                    onClick={() => setIsEditingHandbook(true)}
+                    className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-100 transition-all flex items-center gap-2 font-black uppercase text-[10px] tracking-widest border border-indigo-100"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    Edit
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-1">
@@ -566,7 +615,7 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                       <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg transition-transform group-hover:scale-110 ${i === 0 ? 'bg-amber-400 text-amber-900 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'bg-white/10 text-white/40'}`}>{i + 1}</span>
                       <div>
                         <div className="font-black text-white text-lg group-hover:text-indigo-400 transition-colors tracking-tight">{s.teamName}</div>
-                        <div className="text-[10px] font-black uppercase text-indigo-400/80 tracking-widest">{s.wins} Wins • PD {s.pointDiff > 0 ? `+${s.pointDiff}` : s.pointDiff}</div>
+                        <div className="text-[10px] font-black uppercase text-indigo-400/80 tracking-widest">{s.points} Pts • {s.wins} Wins</div>
                       </div>
                     </div>
                     <ArrowRight className="w-4 h-4 text-white/10 group-hover:text-white transition-all group-hover:translate-x-1" />
