@@ -20,6 +20,7 @@ const toSnakeCasePayload = (obj: any) => {
   if (obj.status) snake.status = obj.status;
   if (obj.members) snake.members = obj.members;
   if (obj.matchPasscode) snake.match_passcode = obj.matchPasscode;
+  if (obj.handbook) snake.handbook = obj.handbook;
   
   if (obj.tournamentId) snake.tournament_id = obj.tournamentId;
   if (obj.team1Id) snake.team1_id = obj.team1Id;
@@ -84,7 +85,8 @@ const fromSnakeCase = (data: any[]): any[] => {
       return {
         ...base,
         format: item.format,
-        matchPasscode: item.match_passcode || '0000'
+        matchPasscode: item.match_passcode || '0000',
+        handbook: item.handbook || []
       } as Tournament;
     }
 
@@ -194,6 +196,18 @@ export const api = {
     localStorage.setItem('smashmaster_teams', JSON.stringify([...all, team]));
   },
 
+  async saveTeams(teams: Team[]): Promise<void> {
+    if (supabase) {
+      const payloads = teams.map(toSnakeCasePayload);
+      const { error } = await supabase.from('teams').insert(payloads);
+      if (error) throw error;
+      return;
+    }
+    const local = localStorage.getItem('smashmaster_teams');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_teams', JSON.stringify([...all, ...teams]));
+  },
+
   async updateTeam(team: Team): Promise<void> {
     if (supabase) {
       const payload = toSnakeCasePayload(team);
@@ -239,6 +253,18 @@ export const api = {
     const local = localStorage.getItem('smashmaster_matches');
     const all = local ? JSON.parse(local) : [];
     localStorage.setItem('smashmaster_matches', JSON.stringify([...all, match]));
+  },
+
+  async saveMatches(matches: Match[]): Promise<void> {
+    if (supabase) {
+      const payloads = matches.map(toSnakeCasePayload);
+      const { error } = await supabase.from('matches').insert(payloads);
+      if (error) throw error;
+      return;
+    }
+    const local = localStorage.getItem('smashmaster_matches');
+    const all = local ? JSON.parse(local) : [];
+    localStorage.setItem('smashmaster_matches', JSON.stringify([...all, ...matches]));
   },
 
   async updateMatch(match: Match): Promise<void> {

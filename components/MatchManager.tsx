@@ -16,7 +16,8 @@ import {
   X, 
   Save, 
   Settings2,
-  Clock
+  Clock,
+  FileText
 } from 'lucide-react';
 import { Team, Match, GameScore, MatchStatus } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
@@ -26,6 +27,7 @@ interface MatchManagerProps {
   matches: Match[];
   tournamentId: string;
   onCreate: (match: Match) => void;
+  onBulkCreate: (matches: Match[]) => void;
   onUpdate: (match: Match) => void;
   onDelete: (id: string) => void;
   onStart: (id: string) => void;
@@ -33,9 +35,11 @@ interface MatchManagerProps {
   onAdminLogin: () => void;
 }
 
-const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentId, onCreate, onUpdate, onDelete, onStart, isAdmin, onAdminLogin }) => {
+const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentId, onCreate, onBulkCreate, onUpdate, onDelete, onStart, isAdmin, onAdminLogin }) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [bulkInput, setBulkInput] = useState('');
   
   // Shared form state for both create and edit
   const [team1Id, setTeam1Id] = useState('');
@@ -64,7 +68,9 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     setMatchDate('');
     setMatchTime('');
     setIsCreating(false);
+    setIsBulkAdding(false);
     setEditingMatch(null);
+    setBulkInput('');
   };
 
   const handleStartEditing = (match: Match) => {
@@ -87,6 +93,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     }
     
     setIsCreating(false);
+    setIsBulkAdding(false);
   };
 
   const handleScoreChange = (index: number, team: 1 | 2, value: string) => {
@@ -165,6 +172,69 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     }
   };
 
+  const handleBulkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    
+    const lines = bulkInput.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const newMatches: Match[] = [];
+    let currentOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) : 0;
+    let skippedLines: string[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(',').map(s => s?.trim());
+      // Team1, Team2, Points, sets, umpire1, umpire2, schedule
+      if (parts.length < 2) continue;
+
+      const [t1Name, t2Name, pts, sets, u1, u2, sched] = parts;
+      
+      const team1 = teams.find(t => t.name.toLowerCase() === t1Name?.toLowerCase());
+      const team2 = teams.find(t => t.name.toLowerCase() === t2Name?.toLowerCase());
+      
+      if (!team1 || !team2) {
+        skippedLines.push(line);
+        continue;
+      }
+
+      const points = [15, 21, 30].includes(parseInt(pts)) ? (parseInt(pts) as 15|21|30) : 21;
+      const format = [1, 3, 5].includes(parseInt(sets)) ? (parseInt(sets) as 1|3|5) : 3;
+      
+      const umpires = [u1, u2].filter(u => u && u.length > 0);
+      
+      let scheduledAt: number | undefined = undefined;
+      if (sched) {
+        const parsedDate = Date.parse(sched);
+        if (!isNaN(parsedDate)) scheduledAt = parsedDate;
+      }
+
+      currentOrder++;
+      newMatches.push({
+        id: crypto.randomUUID(),
+        tournamentId,
+        team1Id: team1.id,
+        team2Id: team2.id,
+        status: 'scheduled',
+        format,
+        pointsTarget: points,
+        currentGame: 0,
+        scores: [],
+        createdAt: Date.now(),
+        scheduledAt,
+        order: currentOrder,
+        umpireNames: umpires.length > 0 ? umpires : undefined
+      });
+    }
+
+    if (skippedLines.length > 0) {
+      alert(`The following lines were skipped (team not found):\n${skippedLines.join('\n')}`);
+    }
+
+    if (newMatches.length > 0) {
+      onBulkCreate(newMatches);
+      resetForm();
+    }
+  };
+
   const handleDeleteMatch = (id: string) => {
     if (window.confirm("Are you sure you want to delete this match? All recorded scores for this tie-up will be lost.")) {
       onDelete(id);
@@ -177,20 +247,37 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
+
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Matches</h2>
           <p className="text-slate-500">Manual tie-ups and game management</p>
         </div>
         {isAdmin ? (
-          <button
-            onClick={() => { resetForm(); setIsCreating(true); }}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all active:scale-95"
-            disabled={teams.length < 2}
-          >
-            <Plus className="w-5 h-5" />
-            New Tie-up
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { resetForm(); setIsBulkAdding(true); }}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition-all shadow-sm active:scale-95 border border-slate-200"
+            >
+              <FileText className="w-5 h-5" />
+              Bulk Import
+            </button>
+            <button
+              onClick={() => { resetForm(); setIsCreating(true); }}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all active:scale-95"
+              disabled={teams.length < 2}
+            >
+              <Plus className="w-5 h-5" />
+              New Tie-up
+            </button>
+          </div>
         ) : (
           <button
             onClick={onAdminLogin}
@@ -201,6 +288,51 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
           </button>
         )}
       </div>
+
+      {isBulkAdding && isAdmin && (
+        <div className="bg-white border-2 border-dashed border-indigo-200 rounded-3xl p-8 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-indigo-600 p-2 rounded-xl">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Bulk Match Importer</h3>
+              <p className="text-sm text-slate-500">Paste your matches list below using the CSV format.</p>
+            </div>
+          </div>
+          
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+            Format: Team1, Team2, Points, Sets, Umpire1, Umpire2, Schedule<br/>
+            Example: <span className="text-indigo-600">T1, T2, 30, 3, T4, T6, 1/4/2026 6 PM</span>
+          </div>
+
+          <form onSubmit={handleBulkSubmit} className="space-y-6">
+            <textarea
+              required
+              rows={8}
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              placeholder="Team Alpha, Team Beta, 21, 3, Team Gamma, Team Delta, Jan 20 5 PM"
+              className="w-full px-5 py-4 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm leading-relaxed"
+            />
+            <div className="flex gap-4">
+              <button
+                type="submit"
+                className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all"
+              >
+                Start Import
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-8 py-4 border border-slate-300 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {(isCreating || editingMatch) && isAdmin && (
         <div className="bg-white border-2 border-indigo-500 rounded-3xl p-8 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
@@ -415,7 +547,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {sortedMatches.length === 0 && !isCreating && !editingMatch && (
+        {sortedMatches.length === 0 && !isCreating && !editingMatch && !isBulkAdding && (
           <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200 shadow-sm">
             <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No matches scheduled yet.</p>
@@ -425,10 +557,10 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         {sortedMatches.map((match) => (
           <div 
             key={match.id} 
-            className={`relative bg-white border rounded-2xl overflow-hidden transition-all duration-300 ${
+            className={`relative border rounded-2xl overflow-hidden transition-all duration-300 ${
               match.status === 'live' 
-                ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-xl shadow-indigo-100 scale-[1.02]' 
-                : 'border-slate-200 hover:shadow-md'
+                ? 'bg-indigo-50/40 border-indigo-600 ring-2 ring-indigo-500/20 shadow-xl shadow-indigo-100 scale-[1.02]' 
+                : 'bg-white border-slate-200 hover:shadow-md'
             }`}
           >
             {match.status === 'live' && (
@@ -474,7 +606,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                   <div className={`w-14 h-14 mx-auto rounded-full flex items-center justify-center font-black text-xl mb-2 transition-all duration-500 ${
                     match.winnerId === match.team1Id 
                       ? 'bg-amber-400 text-white shadow-lg ring-4 ring-amber-100 scale-110' 
-                      : match.status === 'live' ? 'bg-indigo-50 text-indigo-600 border-2 border-indigo-200' : 'bg-slate-100 text-slate-600'
+                      : match.status === 'live' ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-200' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {getTeamName(match.team1Id).charAt(0).toUpperCase()}
                   </div>
@@ -489,7 +621,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                   <div className={`w-14 h-14 mx-auto rounded-full flex items-center justify-center font-black text-xl mb-2 transition-all duration-500 ${
                     match.winnerId === match.team2Id 
                       ? 'bg-amber-400 text-white shadow-lg ring-4 ring-amber-100 scale-110' 
-                      : match.status === 'live' ? 'bg-indigo-50 text-indigo-600 border-2 border-indigo-200' : 'bg-slate-100 text-slate-600'
+                      : match.status === 'live' ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-200' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {getTeamName(match.team2Id).charAt(0).toUpperCase()}
                   </div>
@@ -522,7 +654,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
             </div>
 
             <div className={`px-4 py-3 flex justify-between items-center border-t transition-colors ${
-              match.status === 'live' ? 'bg-indigo-50/50 border-indigo-100' : 'bg-slate-50 border-slate-200'
+              match.status === 'live' ? 'bg-indigo-100/30 border-indigo-100' : 'bg-slate-50 border-slate-200'
             }`}>
               <div className="flex gap-1">
                 {isAdmin && (

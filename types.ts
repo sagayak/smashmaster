@@ -1,4 +1,12 @@
 
+export interface HandbookSectionData {
+  id: string;
+  title: string;
+  iconName: 'Trophy' | 'Activity' | 'Users' | 'Target' | 'Swords' | 'Info';
+  content: string;
+  items: { label: string; desc: string }[];
+}
+
 export interface Tournament {
   id: string;
   name: string;
@@ -6,6 +14,7 @@ export interface Tournament {
   createdAt: number;
   status: 'active' | 'archived';
   matchPasscode?: string;
+  handbook?: HandbookSectionData[];
 }
 
 export interface Team {

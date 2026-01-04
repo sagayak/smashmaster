@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Plus, Trash2, Users, UserPlus, X, Lock, ExternalLink, Activity, Trophy, Clock, UserCheck, History, BarChart3, Play, Edit2, LayoutDashboard, FileText } from 'lucide-react';
 import { Team, Match } from '../types';
@@ -7,6 +8,7 @@ interface TeamManagerProps {
   matches: Match[];
   tournamentId: string;
   onAdd: (team: Team) => void;
+  onBulkAdd: (teams: Team[]) => void;
   onUpdate: (team: Team) => void;
   onRemove: (id: string) => void;
   onSelectTeam: (id: string) => void;
@@ -14,7 +16,7 @@ interface TeamManagerProps {
   onAdminLogin: () => void;
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId, onAdd, onUpdate, onRemove, onSelectTeam, isAdmin, onAdminLogin }) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId, onAdd, onBulkAdd, onUpdate, onRemove, onSelectTeam, isAdmin, onAdminLogin }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
@@ -103,14 +105,26 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
     const lines = bulkInput.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) return;
 
-    lines.forEach(name => {
-      onAdd({
+    const newTeams: Team[] = [];
+
+    lines.forEach(line => {
+      const parts = line.split(',').map(p => p.trim()).filter(p => p.length > 0);
+      if (parts.length === 0) return;
+
+      const teamName = parts[0];
+      const teamMembers = parts.length > 1 ? parts.slice(1) : ['Player 1'];
+
+      newTeams.push({
         id: crypto.randomUUID(),
         tournamentId,
-        name: name,
-        members: ['Player 1'] // Default member for bulk add
+        name: teamName,
+        members: teamMembers
       });
     });
+
+    if (newTeams.length > 0) {
+      onBulkAdd(newTeams);
+    }
 
     handleCancel();
   };
@@ -165,15 +179,24 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teams, matches, tournamentId,
 
       {isBulkAdding && isAdmin && (
         <div className="bg-white border-2 border-dashed border-indigo-200 rounded-xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
-          <h3 className="text-lg font-bold text-slate-900 mb-2">Bulk Add Teams</h3>
-          <p className="text-sm text-slate-500 mb-4">Paste team names below, one team per line.</p>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-indigo-600 p-2 rounded-xl">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">Bulk Add Teams</h3>
+          </div>
+          <p className="text-sm text-slate-500 mb-2">Paste team data below, one team per line.</p>
+          <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 mb-4 text-[10px] font-black text-indigo-700 uppercase tracking-widest leading-relaxed">
+            Format: Team Name, Member 1, Member 2... (Members are optional)<br/>
+            Example: <span className="text-slate-900">Thunder Smashes, John Doe, Jane Smith</span>
+          </div>
           <form onSubmit={handleBulkSubmit} className="space-y-4">
             <textarea
               required
               rows={6}
               value={bulkInput}
               onChange={(e) => setBulkInput(e.target.value)}
-              placeholder="Team Alpha&#10;Team Bravo&#10;Team Charlie"
+              placeholder="Thunder Smashes, John Doe, Jane Smith&#10;Volley Kings, Mike Tyson&#10;Net Ninjas"
               className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm leading-relaxed"
             />
             <div className="flex gap-3">

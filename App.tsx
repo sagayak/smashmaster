@@ -22,7 +22,7 @@ import {
   UserCheck,
   X
 } from 'lucide-react';
-import { Team, Match, ViewState, StandingsEntry, GameScore, Tournament } from './types';
+import { Team, Match, ViewState, StandingsEntry, GameScore, Tournament, HandbookSectionData } from './types';
 import TeamManager from './components/TeamManager';
 import MatchManager from './components/MatchManager';
 import MatchScorer from './components/MatchScorer';
@@ -33,6 +33,40 @@ import TeamDashboard from './components/TeamDashboard';
 import { api } from './lib/api';
 
 const ADMIN_PIN = "1218";
+
+const DEFAULT_HANDBOOK: HandbookSectionData[] = [
+  {
+    id: '1',
+    title: '1. Ranking & Top 4',
+    iconName: 'Trophy',
+    content: 'The top 4 teams are determined using the following tie-breaking criteria in order:',
+    items: [
+      { label: '1. Match Points', desc: 'Total match wins (The most important factor).' },
+      { label: '2. Set/Game Ratio', desc: 'If match wins are tied, individual sets won across all matches decide the rank.' },
+      { label: '3. Point Difference', desc: 'The final tie-breaker: Total points scored minus points conceded.' }
+    ]
+  },
+  {
+    id: '2',
+    title: '2. Point Difference',
+    iconName: 'Activity',
+    content: 'We track every single point scored in every set played.',
+    items: [
+      { label: 'Calculation', desc: 'PD = (Sum of All Your Points) - (Sum of All Opponent Points).' },
+      { label: 'Impact', desc: 'Even if you lose a match, keeping the scores close helps your ranking!' }
+    ]
+  },
+  {
+    id: '3',
+    title: '3. Team Setup',
+    iconName: 'Users',
+    content: 'Essential registration details.',
+    items: [
+      { label: 'Manual Entry', desc: 'Admins can add teams one-by-one with specific member names.' },
+      { label: 'Bulk Import', desc: 'Import dozens of teams at once from a text list in the Teams tab.' }
+    ]
+  }
+];
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
@@ -108,7 +142,8 @@ const App: React.FC = () => {
         format,
         createdAt: Date.now(),
         status: 'active',
-        matchPasscode: '0000'
+        matchPasscode: '0000',
+        handbook: DEFAULT_HANDBOOK
       };
       setTournaments(prev => [newTournament, ...prev]);
       await api.saveTournament(newTournament);
@@ -149,6 +184,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handleBulkAddTeams = async (newTeams: Team[]) => {
+    try {
+      setIsRefreshing(true);
+      await api.saveTeams(newTeams);
+      await fetchData();
+    } catch (err: any) {
+      alert(`Error bulk adding teams: ${err.message}`);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleUpdateTeam = async (updatedTeam: Team) => {
     try {
       await api.updateTeam(updatedTeam);
@@ -164,6 +211,18 @@ const App: React.FC = () => {
       fetchData();
     } catch (err: any) {
       alert(`Error updating match: ${err.message}`);
+    }
+  };
+
+  const handleBulkCreateMatches = async (newMatches: Match[]) => {
+    try {
+      setIsRefreshing(true);
+      await api.saveMatches(newMatches);
+      await fetchData();
+    } catch (err: any) {
+      alert(`Error importing matches: ${err.message}`);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -405,13 +464,14 @@ const App: React.FC = () => {
             onAddTeam={handleAddTeam}
           />
         )}
-        {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={handleAddTeam} onUpdate={handleUpdateTeam} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
+        {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={handleAddTeam} onBulkAdd={handleBulkAddTeams} onUpdate={handleUpdateTeam} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}
         {view === 'matches' && (
           <MatchManager 
             teams={teams} 
             matches={matches} 
             tournamentId={selectedTournamentId!} 
             onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); setView('matches'); }} 
+            onBulkCreate={handleBulkCreateMatches}
             onUpdate={handleUpdateMatch}
             onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} 
             onStart={handleStartMatchRequested} 
