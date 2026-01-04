@@ -31,6 +31,10 @@ import Dashboard from './components/Dashboard';
 import TournamentSelector from './components/TournamentSelector';
 import TeamDashboard from './components/TeamDashboard';
 import { api } from './lib/api';
+import PinModal from './components/PinModal';
+import UmpireModal from './components/UmpireModal';
+import NavButton from './components/NavButton';
+import { ToastProvider, useToast } from './components/ToastContext';
 
 const ADMIN_PIN = "1218";
 
@@ -79,10 +83,11 @@ const DEFAULT_HANDBOOK: HandbookSectionData[] = [
   }
 ];
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null);
+  const { toast } = useToast();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -159,8 +164,9 @@ const App: React.FC = () => {
       setTournaments(prev => [newTournament, ...prev]);
       await api.saveTournament(newTournament);
       await fetchTournaments();
+      toast.success('Tournament created successfully');
     } catch (err: any) {
-      alert(`Error creating tournament: ${err.message}`);
+      toast.error(`Error creating tournament: ${err.message}`);
       fetchTournaments();
     } finally {
       setLoading(false);
@@ -171,8 +177,9 @@ const App: React.FC = () => {
     try {
       await api.updateTournament(updated);
       setTournaments(prev => prev.map(t => t.id === updated.id ? updated : t));
+      toast.success('Tournament updated');
     } catch (err: any) {
-      alert(`Error updating tournament: ${err.message}`);
+      toast.error(`Error updating tournament: ${err.message}`);
     }
   };
 
@@ -181,8 +188,9 @@ const App: React.FC = () => {
       await api.deleteTournament(id);
       setTournaments(prev => prev.filter(t => t.id !== id));
       if (selectedTournamentId === id) setSelectedTournamentId(null);
+      toast.success('Tournament deleted');
     } catch (err: any) {
-      alert(`Error deleting tournament: ${err.message}`);
+      toast.error(`Error deleting tournament: ${err.message}`);
     }
   };
 
@@ -190,8 +198,9 @@ const App: React.FC = () => {
     try {
       await api.saveTeam(team);
       fetchData();
+      toast.success('Team added successfully');
     } catch (err: any) {
-      alert(`Error adding team: ${err.message}`);
+      toast.error(`Error adding team: ${err.message}`);
     }
   };
 
@@ -200,8 +209,9 @@ const App: React.FC = () => {
       setIsRefreshing(true);
       await api.saveTeams(newTeams);
       await fetchData();
+      toast.success(`${newTeams.length} teams added successfully`);
     } catch (err: any) {
-      alert(`Error bulk adding teams: ${err.message}`);
+      toast.error(`Error bulk adding teams: ${err.message}`);
     } finally {
       setIsRefreshing(false);
     }
@@ -211,8 +221,9 @@ const App: React.FC = () => {
     try {
       await api.updateTeam(updatedTeam);
       fetchData();
+      toast.success('Team updated successfully');
     } catch (err: any) {
-      alert(`Error updating team: ${err.message}`);
+      toast.error(`Error updating team: ${err.message}`);
     }
   };
 
@@ -220,8 +231,9 @@ const App: React.FC = () => {
     try {
       await api.updateMatch(updatedMatch);
       fetchData();
+      toast.success('Match updated');
     } catch (err: any) {
-      alert(`Error updating match: ${err.message}`);
+      toast.error(`Error updating match: ${err.message}`);
     }
   };
 
@@ -230,8 +242,9 @@ const App: React.FC = () => {
       setIsRefreshing(true);
       await api.saveMatches(newMatches);
       await fetchData();
+      toast.success(`${newMatches.length} matches imported`);
     } catch (err: any) {
-      alert(`Error importing matches: ${err.message}`);
+      toast.error(`Error importing matches: ${err.message}`);
     } finally {
       setIsRefreshing(false);
     }
@@ -244,8 +257,9 @@ const App: React.FC = () => {
       sessionStorage.setItem('smashmaster_admin', 'true');
       setShowPinModal(false);
       setPinInput("");
+      toast.success('Admin access granted');
     } else {
-      alert("Incorrect Admin PIN");
+      toast.error("Incorrect Admin PIN");
       setPinInput("");
     }
   };
@@ -264,8 +278,9 @@ const App: React.FC = () => {
         setUmpireInput(match.umpireNames && match.umpireNames.length >= 2 ? [match.umpireNames[0], match.umpireNames[1]] : ["", ""]);
         setShowUmpireModal(true);
       }
+      toast.success('Scorer access granted');
     } else {
-      alert("Incorrect Scorer Passcode");
+      toast.error("Incorrect Scorer Passcode");
       setPinInput("");
     }
   };
@@ -460,9 +475,9 @@ const App: React.FC = () => {
       
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
         {(loading || isRefreshing) && (
-          <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pt-20">
-            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-            <p className="text-slate-700 font-bold">Syncing Data...</p>
+          <div className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-white/50 animate-in fade-in zoom-in duration-300">
+            <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
+            <span className="text-xs font-bold text-slate-700">Syncing...</span>
           </div>
         )}
 
@@ -534,72 +549,10 @@ const App: React.FC = () => {
   );
 };
 
-const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCancel }: any) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-    <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 max-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-      <div className="flex flex-col items-center text-center mb-6">
-        <div className="bg-indigo-100 p-3 rounded-full mb-4">
-          <Lock className="w-6 h-6 text-indigo-600" />
-        </div>
-        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
-        <p className="text-slate-600 text-sm mt-1">{description || "Enter valid credentials."}</p>
-      </div>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <input autoFocus type="password" value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="PIN" className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-center text-2xl tracking-[0.5em] font-black bg-white" />
-        <div className="flex gap-3">
-          <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg">Enter</button>
-          <button type="button" onClick={onCancel} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all">Cancel</button>
-        </div>
-      </form>
-    </div>
-  </div>
-);
-
-const UmpireModal = ({ umpireInput, setUmpireInput, onSubmit, onCancel, eligibleTeams }: any) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-    <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95">
-      <div className="flex flex-col items-center text-center mb-8">
-        <div className="bg-emerald-100 p-4 rounded-3xl mb-4">
-          <UserCheck className="w-8 h-8 text-emerald-600" />
-        </div>
-        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Umpires</h3>
-        <p className="text-slate-500 font-bold text-sm mt-1">Select teams to officiate this match</p>
-      </div>
-      <form onSubmit={onSubmit} className="space-y-6">
-        {[0, 1].map(i => (
-          <div key={i} className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Official {i+1}</label>
-            <select
-              value={umpireInput[i]}
-              onChange={(e) => {
-                const next = [...umpireInput];
-                next[i] = e.target.value;
-                setUmpireInput(next);
-              }}
-              className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 focus:border-indigo-500 outline-none transition-all"
-            >
-              <option value="">-- Select Team --</option>
-              {eligibleTeams.map((t: any) => (
-                <option key={t.id} value={t.name} disabled={umpireInput.includes(t.name) && umpireInput[i] !== t.name}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ))}
-        <div className="flex gap-4 pt-4">
-          <button type="submit" className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all">Start Scoring</button>
-          <button type="button" onClick={onCancel} className="px-6 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all">Skip</button>
-        </div>
-      </form>
-    </div>
-  </div>
-);
-
-const NavButton = ({ active, icon, label, onClick }: any) => (
-  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm font-bold whitespace-nowrap ${active ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-700 hover:bg-white/40'}`}>
-    {icon} <span className="hidden sm:inline">{label}</span>
-  </button>
+const App: React.FC = () => (
+  <ToastProvider>
+    <AppContent />
+  </ToastProvider>
 );
 
 export default App;
