@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Swords, Trophy, Play, Plus, ArrowRight, RotateCcw, Lock, Share2, 
   Check, X, Medal, Settings2, CheckCircle2, BookOpen, Info, HelpCircle, 
-  Activity, ListChecks, Target, ChevronRight, Edit3, Trash2, GripVertical, PlusCircle
+  Activity, ListChecks, Target, ChevronRight, Edit3, Trash2, GripVertical, PlusCircle, RefreshCcw
 } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament, HandbookSectionData } from '../types';
 
@@ -20,6 +20,30 @@ interface DashboardProps {
   onSelectTeam: (id: string) => void;
   onAddTeam: (team: Team) => void;
 }
+
+const DEFAULT_STRUCTURE: HandbookSectionData[] = [
+  {
+    id: '1',
+    title: '1. Ranking & Tie-Breakers',
+    iconName: 'Trophy',
+    content: 'Standings are calculated using a hierarchical logic to ensure fair competition:',
+    items: [
+      { label: 'Match Wins', desc: 'Primary metric. Most overall match victories ranks highest.' },
+      { label: 'Set Ratio', desc: 'Calculated as (Sets Won / Sets Played). Used if match wins are tied.' },
+      { label: 'Point Diff', desc: 'Total points scored minus total points conceded.' }
+    ]
+  },
+  {
+    id: '2',
+    title: '2. Point Difference (PD)',
+    iconName: 'Activity',
+    content: 'PD is the ultimate tie-breaker. Every point in every set counts.',
+    items: [
+      { label: 'Calculation', desc: 'PD = (Sum of Your Points) - (Sum of Opponent Points).' },
+      { label: 'Strategy', desc: 'Losing 19-21 is significantly better for your rank than losing 5-21.' }
+    ]
+  }
+];
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   Trophy: <Trophy className="w-5 h-5 text-amber-500" />,
@@ -77,6 +101,13 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     if (!tournament) return;
     onUpdateTournament({ ...tournament, handbook: editingHandbookData });
     setIsEditingHandbook(false);
+  };
+
+  const handleLoadDefaults = () => {
+    if (window.confirm("Load standard tournament rules? This will overwrite current changes.")) {
+      setEditingHandbookData(JSON.parse(JSON.stringify(DEFAULT_STRUCTURE)));
+      setIsEditingHandbook(true);
+    }
   };
 
   const addHandbookSection = () => {
@@ -212,6 +243,14 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
             <div className="flex-1 overflow-y-auto px-1">
               {isEditingHandbook ? (
                 <div className="space-y-12 pb-12">
+                  <div className="flex justify-end">
+                    <button 
+                      onClick={handleLoadDefaults}
+                      className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+                    >
+                      <RefreshCcw className="w-3 h-3" /> Load Official Defaults
+                    </button>
+                  </div>
                   {editingHandbookData.map((section) => (
                     <div key={section.id} className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-200 relative group/section shadow-sm">
                       <button 
@@ -319,11 +358,19 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                   {currentHandbook.length === 0 ? (
                     <div className="py-20 text-center">
                        <HelpCircle className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                       <p className="text-slate-400 italic font-medium">The handbook is currently empty.</p>
+                       <p className="text-slate-400 italic font-medium mb-6">The handbook is currently empty.</p>
                        {isAdmin && (
-                         <button onClick={() => setIsEditingHandbook(true)} className="mt-4 text-indigo-600 font-black uppercase tracking-widest text-[10px] hover:underline">
-                           Initialize Content
-                         </button>
+                         <div className="flex flex-col items-center gap-4">
+                           <button 
+                            onClick={handleLoadDefaults}
+                            className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center gap-2"
+                           >
+                            <RefreshCcw className="w-4 h-4" /> Load Standard Rules
+                           </button>
+                           <button onClick={() => setIsEditingHandbook(true)} className="text-slate-400 font-black uppercase tracking-widest text-[10px] hover:underline">
+                             Or create custom sections
+                           </button>
+                         </div>
                        )}
                     </div>
                   ) : (
