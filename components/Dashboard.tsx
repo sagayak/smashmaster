@@ -40,7 +40,17 @@ const DEFAULT_STRUCTURE: HandbookSectionData[] = [
     content: 'PD is the ultimate tie-breaker. Every point in every set counts.',
     items: [
       { label: 'Calculation', desc: 'PD = (Sum of Your Points) - (Sum of Opponent Points).' },
-      { label: 'Strategy', desc: 'Losing 19-21 is significantly better for your rank than losing 5-21.' }
+      { label: 'Strategy', desc: 'Losing 28-30 is significantly better for your rank than losing 10-30.' }
+    ]
+  },
+  {
+    id: '3',
+    title: '3. Match Protocols',
+    iconName: 'Target',
+    content: 'Standard match configurations for all tournament tie-ups(League Stage):',
+    items: [
+      { label: 'Format', desc: 'Best of 3 sets. First to win 2 sets wins the match.' },
+      { label: 'Scoring', desc: 'Rally point system. Sets played to 30 points.' }
     ]
   }
 ];

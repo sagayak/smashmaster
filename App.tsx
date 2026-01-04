@@ -53,17 +53,17 @@ const DEFAULT_HANDBOOK: HandbookSectionData[] = [
     content: 'PD is our ultimate tie-breaker. Every single point in every set matters for your final rank.',
     items: [
       { label: 'Logic', desc: 'PD = (Sum of Your Points) - (Sum of Opponent Points).' },
-      { label: 'Strategy', desc: 'Even if losing a match, keeping the score close (e.g., 19-21) protects your PD significantly more than a blowout.' }
+      { label: 'Strategy', desc: 'Even if losing a match, keeping the score close (e.g., 28-30) protects your PD significantly more than a blowout.' }
     ]
   },
   {
     id: '3',
     title: '3. Match Protocols',
     iconName: 'Target',
-    content: 'Standard tournament match configurations used for all tie-ups:',
+    content: 'Standard match configurations for all tournament tie-ups(League Stage):',
     items: [
       { label: 'Format', desc: 'Typically Best of 3 sets. The first team to win 2 sets wins the match.' },
-      { label: 'Scoring', desc: 'Rally point system. Sets are played to 21 points (Changeable by Admin).' },
+      { label: 'Scoring', desc: 'Rally point system. Sets are played to 30 points.' },
       { label: 'Shuttles', desc: 'Teams should provide their own shuttles unless specified by the venue.' }
     ]
   },
