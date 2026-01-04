@@ -30,6 +30,7 @@ import Standings from './components/Standings';
 import Dashboard from './components/Dashboard';
 import TournamentSelector from './components/TournamentSelector';
 import TeamDashboard from './components/TeamDashboard';
+import LandingPage from './components/LandingPage';
 import { api } from './lib/api';
 
 const ADMIN_PIN = "1218";
@@ -80,6 +81,7 @@ const DEFAULT_HANDBOOK: HandbookSectionData[] = [
 ];
 
 const App: React.FC = () => {
+  const [showLanding, setShowLanding] = useState<boolean>(true);
   const [view, setView] = useState<ViewState>('dashboard');
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null);
@@ -377,6 +379,12 @@ const App: React.FC = () => {
     activeMatch ? (t.id !== activeMatch.team1Id && t.id !== activeMatch.team2Id) : true
   );
 
+  // If we haven't entered the arena yet, show the landing page
+  if (showLanding) {
+    return <LandingPage onEnter={() => setShowLanding(false)} />;
+  }
+
+  // If no tournament is selected, show the selector
   if (!selectedTournamentId && !loading) {
     return (
       <div className="min-h-screen">
