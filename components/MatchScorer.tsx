@@ -120,10 +120,10 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
         
         <div className="flex flex-col items-center">
           <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.5em] mb-3">
-            Game Progress
+            Match Progression
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {Array.from({ length: match.format }).map((_, i) => {
               const isCompleted = i < match.scores.length;
               const isCurrent = i === match.scores.length;
@@ -132,22 +132,25 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
               return (
                 <div key={i} className="flex flex-col items-center gap-2">
                   <div 
-                    className={`h-1.5 w-12 sm:w-16 rounded-full transition-all duration-500 overflow-hidden relative ${
+                    className={`h-2 w-14 sm:w-20 rounded-full transition-all duration-700 overflow-hidden relative shadow-inner ${
                       isCompleted 
                         ? winnerOfGame === 1 
-                          ? 'bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.5)]' 
-                          : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' 
+                          ? 'bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] border border-indigo-400/50' 
+                          : 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.6)] border border-emerald-400/50' 
                         : isCurrent 
-                          ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.4)] animate-pulse' 
-                          : 'bg-white/10'
+                          ? 'bg-white/40 border border-white/20' 
+                          : 'bg-white/5 border border-white/5'
                     }`}
                   >
                     {isCurrent && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-[shimmer_2s_infinite]"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent animate-[shimmer_1.5s_infinite]"></div>
+                    )}
+                    {isCompleted && (
+                       <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent pointer-events-none"></div>
                     )}
                   </div>
-                  <span className={`text-[9px] font-black uppercase tracking-tighter ${isCurrent ? 'text-white' : 'text-white/20'}`}>
-                    Game {i + 1}
+                  <span className={`text-[8px] font-black uppercase tracking-widest ${isCurrent ? 'text-white' : 'text-white/20'}`}>
+                    SET {i + 1}
                   </span>
                 </div>
               );
@@ -200,10 +203,10 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
         {canFinishGame ? (
           <button
             onClick={handleFinishGame}
-            className="flex-1 bg-white text-slate-900 py-5 rounded-3xl font-black text-lg sm:text-xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4"
+            className="flex-1 bg-white text-slate-900 py-5 rounded-3xl font-black text-lg sm:text-xl flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4 border-b-4 border-slate-300 active:border-b-0"
           >
             <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-            END GAME {match.scores.length + 1}
+            END SET {match.scores.length + 1}
           </button>
         ) : (
           <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl py-5 flex flex-col items-center justify-center">
@@ -239,10 +242,10 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
     ? (isActive ? 'bg-indigo-600/20 border-indigo-500/50 shadow-[inset_0_0_50px_rgba(99,102,241,0.1)]' : 'bg-white/5 border-white/5')
     : (isActive ? 'bg-emerald-600/20 border-emerald-500/50 shadow-[inset_0_0_50px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/5');
   
-  const accentBg = colorClass === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500';
+  const accentBg = colorClass === 'indigo' ? 'bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
 
   return (
-    <div className={`relative flex flex-col items-center justify-center p-4 rounded-[3rem] border-4 transition-all duration-500 overflow-hidden ${bgClasses}`}>
+    <div className={`relative flex flex-col items-center justify-center p-4 rounded-[3.5rem] border-4 transition-all duration-500 overflow-hidden ${bgClasses}`}>
       {/* Background large side indicator */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] text-[20rem] sm:text-[25rem] font-black leading-none select-none overflow-hidden translate-y-8">
         {side}
@@ -252,7 +255,7 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
         <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-3 drop-shadow-md truncate leading-tight">{team.name}</h3>
         <div className="flex items-center justify-center gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className={`w-10 h-1.5 rounded-full ${i < gamesWon ? accentBg : 'bg-white/10'}`} />
+            <div key={i} className={`w-10 h-2 rounded-full transition-all duration-500 ${i < gamesWon ? accentBg : 'bg-white/10'}`} />
           ))}
         </div>
       </div>

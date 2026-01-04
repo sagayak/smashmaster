@@ -37,33 +37,44 @@ const ADMIN_PIN = "1218";
 const DEFAULT_HANDBOOK: HandbookSectionData[] = [
   {
     id: '1',
-    title: '1. Ranking & Top 4',
+    title: '1. Ranking & Tie-Breakers',
     iconName: 'Trophy',
-    content: 'The top 4 teams are determined using the following tie-breaking criteria in order:',
+    content: 'Final standings are calculated using a strict hierarchical logic to ensure fair competition:',
     items: [
-      { label: '1. Match Points', desc: 'Total match wins (The most important factor).' },
-      { label: '2. Set/Game Ratio', desc: 'If match wins are tied, individual sets won across all matches decide the rank.' },
-      { label: '3. Point Difference', desc: 'The final tie-breaker: Total points scored minus points conceded.' }
+      { label: 'Match Wins', desc: 'The primary metric. The team with the most overall match victories ranks highest.' },
+      { label: 'Set/Game Ratio', desc: 'Calculated as (Sets Won / Sets Played). Used if match wins are tied.' },
+      { label: 'Point Difference', desc: 'The total points scored across all sets minus total points conceded.' }
     ]
   },
   {
     id: '2',
-    title: '2. Point Difference',
+    title: '2. Point Difference (PD)',
     iconName: 'Activity',
-    content: 'We track every single point scored in every set played.',
+    content: 'PD is our ultimate tie-breaker. Every single point in every set matters for your final rank.',
     items: [
-      { label: 'Calculation', desc: 'PD = (Sum of All Your Points) - (Sum of All Opponent Points).' },
-      { label: 'Impact', desc: 'Even if you lose a match, keeping the scores close helps your ranking!' }
+      { label: 'Logic', desc: 'PD = (Sum of Your Points) - (Sum of Opponent Points).' },
+      { label: 'Strategy', desc: 'Even if losing a match, keeping the score close (e.g., 19-21) protects your PD significantly more than a blowout.' }
     ]
   },
   {
     id: '3',
-    title: '3. Team Setup',
-    iconName: 'Users',
-    content: 'Essential registration details.',
+    title: '3. Match Protocols',
+    iconName: 'Target',
+    content: 'Standard tournament match configurations used for all tie-ups:',
     items: [
-      { label: 'Manual Entry', desc: 'Admins can add teams one-by-one with specific member names.' },
-      { label: 'Bulk Import', desc: 'Import dozens of teams at once from a text list in the Teams tab.' }
+      { label: 'Format', desc: 'Typically Best of 3 sets. The first team to win 2 sets wins the match.' },
+      { label: 'Scoring', desc: 'Rally point system. Sets are played to 21 points (Changeable by Admin).' },
+      { label: 'Shuttles', desc: 'Teams should provide their own shuttles unless specified by the venue.' }
+    ]
+  },
+  {
+    id: '4',
+    title: '4. Umpiring Duties',
+    iconName: 'Users',
+    content: 'To ensure smooth flow, teams are assigned officiating duties for other matches.',
+    items: [
+      { label: 'Assignment', desc: 'Check the "Matches" tab. If your team is listed as an official, you must provide 2 umpires.' },
+      { label: 'Role', desc: 'Officials track the live score and announce set winners to the tournament desk.' }
     ]
   }
 ];
