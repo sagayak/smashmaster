@@ -195,6 +195,28 @@ const App: React.FC = () => {
     }
   };
 
+  const handleResetTournamentData = async () => {
+    if (!selectedTournamentId) return;
+    
+    // Explicitly ask for PIN even if logged in as Admin for extra safety
+    const confirmPin = window.prompt("WARNING: This will PERMANENTLY DELETE all teams and matches for this tournament. Enter Admin PIN to proceed:");
+    
+    if (confirmPin === ADMIN_PIN) {
+      setIsRefreshing(true);
+      try {
+        await api.resetTournamentData(selectedTournamentId);
+        await fetchData();
+        alert("Tournament data has been successfully wiped.");
+      } catch (err: any) {
+        alert(`Error resetting tournament: ${err.message}`);
+      } finally {
+        setIsRefreshing(false);
+      }
+    } else if (confirmPin !== null) {
+      alert("Incorrect PIN. Action cancelled.");
+    }
+  };
+
   const handleAddTeam = async (team: Team) => {
     try {
       await api.saveTeam(team);
@@ -567,6 +589,7 @@ const App: React.FC = () => {
             onUpdateTournament={handleUpdateTournament}
             onSelectTeam={handleSelectTeamForDashboard}
             onAddTeam={handleAddTeam}
+            onResetTournamentData={handleResetTournamentData}
           />
         )}
         {view === 'teams' && <TeamManager teams={teams} matches={matches} tournamentId={selectedTournamentId!} onAdd={handleAddTeam} onBulkAdd={handleBulkAddTeams} onUpdate={handleUpdateTeam} onRemove={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteTeam(id); fetchData(); }} onSelectTeam={handleSelectTeamForDashboard} isAdmin={isAdmin} onAdminLogin={() => setShowPinModal(true)} />}

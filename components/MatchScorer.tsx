@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Match, Team, GameScore, MatchStatus } from '../types';
-import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3, Target } from 'lucide-react';
+import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3, Target, PartyPopper } from 'lucide-react';
 
 interface MatchScorerProps {
   match: Match;
@@ -15,6 +15,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   const [t1Score, setT1Score] = useState(0);
   const [t2Score, setT2Score] = useState(0);
   const [history, setHistory] = useState<{ t1: number, t2: number }[]>([]);
+  const [showMatchWinnerOverlay, setShowMatchWinnerOverlay] = useState<string | null>(null);
 
   const currentScores = [...match.scores];
   const t1GamesWon = currentScores.filter(s => s.team1 > s.team2).length;
@@ -22,6 +23,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   const gamesNeeded = Math.ceil(match.format / 2);
 
   const addPoint = (team: 1 | 2) => {
+    if (showMatchWinnerOverlay) return;
     setHistory([...history, { t1: t1Score, t2: t2Score }]);
     if (team === 1) setT1Score(prev => prev + 1);
     else setT2Score(prev => prev + 1);
@@ -32,6 +34,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   };
 
   const removePoint = (team: 1 | 2, e?: React.MouseEvent) => {
+    if (showMatchWinnerOverlay) return;
     if (e) e.stopPropagation();
     setHistory([...history, { t1: t1Score, t2: t2Score }]);
     if (team === 1) setT1Score(prev => Math.max(0, prev - 1));
@@ -39,6 +42,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   };
 
   const handleScoreInput = (team: 1 | 2, val: string) => {
+    if (showMatchWinnerOverlay) return;
     const numValue = parseInt(val) || 0;
     setHistory([...history, { t1: t1Score, t2: t2Score }]);
     if (team === 1) setT1Score(numValue);
@@ -46,7 +50,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   };
 
   const undoPoint = () => {
-    if (history.length === 0) return;
+    if (history.length === 0 || showMatchWinnerOverlay) return;
     const last = history[history.length - 1];
     setT1Score(last.t1);
     setT2Score(last.t2);
@@ -74,9 +78,11 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
     if (newT1Wins >= gamesNeeded) {
       updatedStatus = 'completed';
       winnerId = team1.id;
+      setShowMatchWinnerOverlay(team1.name);
     } else if (newT2Wins >= gamesNeeded) {
       updatedStatus = 'completed';
       winnerId = team2.id;
+      setShowMatchWinnerOverlay(team2.name);
     }
 
     const updatedMatch: Match = {
@@ -88,12 +94,11 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
     };
 
     await onUpdate(updatedMatch);
-    setT1Score(0);
-    setT2Score(0);
-    setHistory([]);
-
-    if (updatedStatus === 'completed') {
-      onFinish();
+    
+    if (updatedStatus !== 'completed') {
+      setT1Score(0);
+      setT2Score(0);
+      setHistory([]);
     }
   };
 
@@ -111,6 +116,42 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
 
   return (
     <div className="fixed inset-0 bg-slate-900 z-[60] flex flex-col p-4 sm:p-6 overflow-hidden select-none text-white">
+      {showMatchWinnerOverlay && (
+        <div className="fixed inset-0 z-[100] bg-indigo-600 flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-500">
+           <PartyPopper className="w-24 h-24 text-white mb-8 animate-bounce" />
+           <h2 className="text-2xl font-black uppercase tracking-[0.4em] text-indigo-200 mb-4">Match Completed</h2>
+           <div className="text-5xl sm:text-7xl font-black text-white text-center mb-12 drop-shadow-2xl">
+             {showMatchWinnerOverlay}
+           </div>
+           <div className="bg-white/10 p-8 rounded-[3rem] border border-white/20 mb-12 max-w-md w-full">
+              <div className="flex justify-between items-center gap-8 mb-4">
+                 <div className="text-center flex-1">
+                    <div className="text-[10px] font-black uppercase text-indigo-200 mb-1">{team1.name}</div>
+                    <div className="text-3xl font-black">{t1GamesWon + (showMatchWinnerOverlay === team1.name ? 1 : 0)}</div>
+                 </div>
+                 <div className="text-xl font-black text-indigo-300 italic">VS</div>
+                 <div className="text-center flex-1">
+                    <div className="text-[10px] font-black uppercase text-indigo-200 mb-1">{team2.name}</div>
+                    <div className="text-3xl font-black">{t2GamesWon + (showMatchWinnerOverlay === team2.name ? 1 : 0)}</div>
+                 </div>
+              </div>
+              <div className="flex justify-center gap-3">
+                 {[...match.scores, { team1: t1Score, team2: t2Score }].map((s, i) => (
+                   <span key={i} className="bg-white/20 px-3 py-1 rounded-xl text-xs font-black">
+                     {s.team1}-{s.team2}
+                   </span>
+                 ))}
+              </div>
+           </div>
+           <button 
+             onClick={onFinish}
+             className="bg-white text-indigo-600 px-12 py-5 rounded-[2.5rem] font-black uppercase tracking-widest text-lg shadow-2xl hover:scale-110 active:scale-95 transition-all"
+           >
+             Finish Session
+           </button>
+        </div>
+      )}
+
       {/* Header Info */}
       <div className="flex items-center justify-between mb-8 relative z-10 shrink-0">
         <button onClick={onFinish} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">
@@ -150,7 +191,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
                     )}
                   </div>
                   <span className={`text-[8px] font-black uppercase tracking-widest ${isCurrent ? 'text-white' : 'text-white/20'}`}>
-                    SET {i + 1}
+                    {isCompleted ? `${match.scores[i].team1}:${match.scores[i].team2}` : `SET ${i + 1}`}
                   </span>
                 </div>
               );
