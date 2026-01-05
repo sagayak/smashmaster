@@ -19,7 +19,8 @@ import {
   Clock,
   FileText,
   Download,
-  Table as TableIcon
+  Table as TableIcon,
+  ArrowUpAZ
 } from 'lucide-react';
 import { Team, Match, GameScore, MatchStatus } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
@@ -53,10 +54,20 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
   const [matchStatus, setMatchStatus] = useState<MatchStatus>('scheduled');
   const [matchDate, setMatchDate] = useState('');
   const [matchTime, setMatchTime] = useState('');
+  const [matchOrder, setMatchOrder] = useState<number>(1);
 
+  // Sorting logic: prioritize scheduledAt, then order
   const sortedMatches = [...matches].sort((a, b) => {
-    if (a.order !== b.order) return a.order - b.order;
-    return b.createdAt - a.createdAt;
+    // 1. Prioritize Scheduled Date/Time
+    const timeA = a.scheduledAt || Infinity;
+    const timeB = b.scheduledAt || Infinity;
+    
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+    
+    // 2. Secondary sort by order index
+    return (a.order || 0) - (b.order || 0);
   });
 
   const resetForm = () => {
@@ -69,6 +80,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     setMatchStatus('scheduled');
     setMatchDate('');
     setMatchTime('');
+    setMatchOrder(matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1);
     setIsCreating(false);
     setIsBulkAdding(false);
     setEditingMatch(null);
@@ -84,6 +96,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     setUmpireInputs(match.umpireNames && match.umpireNames.length >= 2 ? [match.umpireNames[0], match.umpireNames[1]] : ['', '']);
     setMatchScores([...match.scores]);
     setMatchStatus(match.status);
+    setMatchOrder(match.order || 1);
     
     if (match.scheduledAt) {
       const d = new Date(match.scheduledAt);
@@ -149,12 +162,12 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         scores: matchScores,
         status: matchStatus,
         winnerId: winnerId,
-        scheduledAt: scheduledAt
+        scheduledAt: scheduledAt,
+        order: matchOrder
       };
       await onUpdate(updatedMatch);
       resetForm();
     } else {
-      const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;
       onCreate({
         id: crypto.randomUUID(),
         tournamentId,
@@ -167,7 +180,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         scores: [],
         createdAt: Date.now(),
         scheduledAt: scheduledAt,
-        order: nextOrder,
+        order: matchOrder,
         umpireNames: validUmpires.length > 0 ? validUmpires : undefined
       });
       resetForm();
@@ -212,7 +225,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       currentOrder++;
       newMatches.push({
         id: crypto.randomUUID(),
-        tournamentId,
+        tournamentId: team1.tournamentId, // Correctly use team's tournament ID
         team1Id: team1.id,
         team2Id: team2.id,
         status: 'scheduled',
@@ -372,7 +385,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <label className="block text-sm font-black text-slate-700 uppercase tracking-widest">Contestants</label>
+                <label className="block text-sm font-black text-slate-700 uppercase tracking-widest">Contestants & Priority</label>
                 <div className="grid grid-cols-1 gap-3">
                   <select
                     required
@@ -401,6 +414,22 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                       <option key={t.id} value={t.id} disabled={t.id === team1Id}>{t.name}</option>
                     ))}
                   </select>
+
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2">
+                       <ArrowUpAZ className="w-3 h-3" /> 
+                       Display Order / Match Number
+                    </label>
+                    <input 
+                      type="number"
+                      required
+                      min="1"
+                      value={matchOrder}
+                      onChange={(e) => setMatchOrder(parseInt(e.target.value) || 1)}
+                      className="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-black bg-white transition-all shadow-inner"
+                      placeholder="e.g. 1"
+                    />
+                  </div>
                 </div>
               </div>
 
