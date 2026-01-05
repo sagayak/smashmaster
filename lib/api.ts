@@ -21,6 +21,9 @@ const toSnakeCasePayload = (obj: any) => {
   if (obj.members) snake.members = obj.members;
   if (obj.matchPasscode) snake.match_passcode = obj.matchPasscode;
   if (obj.handbook) snake.handbook = obj.handbook;
+  if (Object.prototype.hasOwnProperty.call(obj, 'isLocked')) {
+    snake.is_locked = obj.isLocked;
+  }
   
   if (obj.tournamentId) snake.tournament_id = obj.tournamentId;
   if (obj.team1Id) snake.team1_id = obj.team1Id;
@@ -86,7 +89,8 @@ const fromSnakeCase = (data: any[]): any[] => {
         ...base,
         format: item.format,
         matchPasscode: item.match_passcode || '0000',
-        handbook: item.handbook || []
+        handbook: item.handbook || [],
+        isLocked: item.is_locked ?? false
       } as Tournament;
     }
 

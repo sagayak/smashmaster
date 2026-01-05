@@ -15,6 +15,7 @@ export interface Tournament {
   status: 'active' | 'archived';
   matchPasscode?: string;
   handbook?: HandbookSectionData[];
+  isLocked: boolean;
 }
 
 export interface Team {

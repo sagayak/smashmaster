@@ -4,7 +4,7 @@ import {
   Users, Swords, Trophy, Play, Plus, ArrowRight, RotateCcw, Lock, Share2, 
   Check, X, Medal, Settings2, CheckCircle2, BookOpen, Info, HelpCircle, 
   Activity, ListChecks, Target, ChevronRight, Edit3, Trash2, GripVertical, PlusCircle, RefreshCcw,
-  Printer, Download, Upload, Copy, FileJson, FileText
+  Printer, Download, Upload, Copy, FileJson, FileText, Unlock
 } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament, HandbookSectionData } from '../types';
 
@@ -184,6 +184,11 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     setIsEditingFormat(false);
   };
 
+  const toggleLock = () => {
+    if (!tournament || !isAdmin) return;
+    onUpdateTournament({ ...tournament, isLocked: !tournament.isLocked });
+  };
+
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickTeamName.trim() || !tournament) return;
@@ -257,29 +262,48 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 bg-white/50 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/60 shadow-xl">
-        <div>
+        <div className="flex-1">
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">{tournament?.name}</h2>
-            <div className="relative">
-              <button 
-                onClick={() => isAdmin && setIsEditingFormat(!isEditingFormat)}
-                className="bg-indigo-600/90 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-b-4 border-indigo-800 flex items-center gap-2 transition-all hover:bg-indigo-700 active:translate-y-0.5 active:border-b-0 backdrop-blur-sm"
-              >
-                <Settings2 className="w-3.5 h-3.5" />
-                Format: {tournament?.format}
-              </button>
-              {isEditingFormat && isAdmin && (
-                <div className="absolute top-full mt-2 left-0 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 min-w-[200px] animate-in slide-in-from-top-2">
-                  <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Select Format</div>
-                  <button onClick={() => updateFormat('League')} className="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors flex items-center justify-between">
-                    League Table
-                    {tournament?.format === 'League' && <Check className="w-4 h-4 text-emerald-500" />}
-                  </button>
-                  <button onClick={() => updateFormat('Knockout')} className="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors flex items-center justify-between">
-                    Knockout Bracket
-                    {tournament?.format === 'Knockout' && <Check className="w-4 h-4 text-emerald-500" />}
-                  </button>
-                </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button 
+                  onClick={() => isAdmin && setIsEditingFormat(!isEditingFormat)}
+                  className="bg-indigo-600/90 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-b-4 border-indigo-800 flex items-center gap-2 transition-all hover:bg-indigo-700 active:translate-y-0.5 active:border-b-0 backdrop-blur-sm"
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                  Format: {tournament?.format}
+                </button>
+                {isEditingFormat && isAdmin && (
+                  <div className="absolute top-full mt-2 left-0 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 min-w-[200px] animate-in slide-in-from-top-2">
+                    <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Select Format</div>
+                    <button onClick={() => updateFormat('League')} className="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors flex items-center justify-between">
+                      League Table
+                      {tournament?.format === 'League' && <Check className="w-4 h-4 text-emerald-500" />}
+                    </button>
+                    <button onClick={() => updateFormat('Knockout')} className="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-xl text-sm font-bold text-slate-700 transition-colors flex items-center justify-between">
+                      Knockout Bracket
+                      {tournament?.format === 'Knockout' && <Check className="w-4 h-4 text-emerald-500" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Tournament Lock Button */}
+              {isAdmin && (
+                <button 
+                  onClick={toggleLock}
+                  className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-b-4 flex items-center gap-2 transition-all backdrop-blur-sm ${
+                    tournament?.isLocked 
+                      ? 'bg-amber-500 border-amber-700 text-white hover:bg-amber-600' 
+                      : 'bg-emerald-500 border-emerald-700 text-white hover:bg-emerald-600'
+                  }`}
+                  title={tournament?.isLocked ? "Scoring is PIN protected" : "Scoring is open to public"}
+                >
+                  {tournament?.isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                  {tournament?.isLocked ? 'Protected' : 'Public'}
+                </button>
               )}
             </div>
           </div>

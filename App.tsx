@@ -162,7 +162,8 @@ const App: React.FC = () => {
         createdAt: Date.now(),
         status: 'active',
         matchPasscode: '0000',
-        handbook: DEFAULT_HANDBOOK
+        handbook: DEFAULT_HANDBOOK,
+        isLocked: false // Default to unlocked as requested
       };
       setTournaments(prev => [newTournament, ...prev]);
       await api.saveTournament(newTournament);
@@ -302,6 +303,7 @@ const App: React.FC = () => {
 
   const handleStartMatchRequested = (id: string) => {
     const match = matches.find(m => m.id === id);
+    const currentTournament = tournaments.find(t => t.id === selectedTournamentId);
     setActiveMatchId(id);
     
     if (match?.umpireNames && match.umpireNames.length >= 2) {
@@ -310,7 +312,8 @@ const App: React.FC = () => {
       setUmpireInput(["", ""]);
     }
 
-    if (isAdmin || isScorer) {
+    // Skip PIN if tournament is unlocked OR user is already authenticated
+    if (isAdmin || isScorer || !currentTournament?.isLocked) {
       setShowUmpireModal(true);
     } else {
       setShowScorerModal(true);
