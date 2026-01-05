@@ -4,7 +4,7 @@ import {
   Users, Swords, Trophy, Play, Plus, ArrowRight, RotateCcw, Lock, Share2, 
   Check, X, Medal, Settings2, CheckCircle2, BookOpen, Info, HelpCircle, 
   Activity, ListChecks, Target, ChevronRight, Edit3, Trash2, GripVertical, PlusCircle, RefreshCcw,
-  Printer, Download, Upload, Copy, FileJson, FileText, Unlock
+  Printer, Download, Upload, Copy, FileJson, FileText, Unlock, AlertTriangle
 } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament, HandbookSectionData } from '../types';
 
@@ -20,6 +20,7 @@ interface DashboardProps {
   onUpdateTournament: (updated: Tournament) => void;
   onSelectTeam: (id: string) => void;
   onAddTeam: (team: Team) => void;
+  onResetTournamentData: () => void;
 }
 
 const DEFAULT_STRUCTURE: HandbookSectionData[] = [
@@ -66,7 +67,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Info: <Info className="w-5 h-5 text-sky-500" />
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament, onSelectTeam, onAddTeam }) => {
+const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament, onSelectTeam, onAddTeam, onResetTournamentData }) => {
   const [copied, setCopied] = useState(false);
   const [isEditingFormat, setIsEditingFormat] = useState(false);
   const [quickTeamName, setQuickTeamName] = useState('');
@@ -721,6 +722,34 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
               </div>
             )}
           </section>
+
+          {/* Danger Zone */}
+          {isAdmin && (
+            <section className="bg-red-50/50 border border-red-100 rounded-[2.5rem] p-8 shadow-sm">
+               <div className="flex items-center gap-3 mb-6">
+                  <div className="bg-red-100 p-3 rounded-2xl text-red-600">
+                     <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-red-900 uppercase tracking-tight">Danger Zone</h3>
+                    <p className="text-[10px] font-bold text-red-600/70 uppercase tracking-widest">Irreversible Admin Actions</p>
+                  </div>
+               </div>
+               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-white rounded-3xl border border-red-50">
+                  <div>
+                    <h4 className="font-black text-slate-900 text-sm uppercase tracking-tight">Reset Tournament Data</h4>
+                    <p className="text-xs text-slate-500 font-medium">Remove all teams, matches, and recorded results for this specific tournament.</p>
+                  </div>
+                  <button 
+                    onClick={onResetTournamentData}
+                    className="w-full sm:w-auto px-8 py-3 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-red-700 transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Reset Tournament
+                  </button>
+               </div>
+            </section>
+          )}
         </div>
 
         {/* Right Column: Mini Leaderboard */}

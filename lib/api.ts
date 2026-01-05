@@ -180,6 +180,22 @@ export const api = {
     localStorage.setItem('smashmaster_tournaments', JSON.stringify(list.filter(t => t.id !== id)));
   },
 
+  async resetTournamentData(tournamentId: string): Promise<void> {
+    if (supabase) {
+      const results = await Promise.all([
+        supabase.from('matches').delete().eq('tournament_id', tournamentId),
+        supabase.from('teams').delete().eq('tournament_id', tournamentId)
+      ]);
+      const error = results.find(r => r.error)?.error;
+      if (error) throw error;
+      return;
+    }
+    const teams = JSON.parse(localStorage.getItem('smashmaster_teams') || '[]');
+    const matches = JSON.parse(localStorage.getItem('smashmaster_matches') || '[]');
+    localStorage.setItem('smashmaster_teams', JSON.stringify(teams.filter((t: any) => t.tournamentId !== tournamentId)));
+    localStorage.setItem('smashmaster_matches', JSON.stringify(matches.filter((m: any) => m.tournamentId !== tournamentId)));
+  },
+
   async getTeams(tournamentId: string): Promise<Team[]> {
     if (supabase) {
       const { data, error } = await supabase.from('teams').select('*').eq('tournament_id', tournamentId);
