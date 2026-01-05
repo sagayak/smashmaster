@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Trophy, 
   Users, 
@@ -102,6 +102,9 @@ const App: React.FC = () => {
   const [pinInput, setPinInput] = useState<string>("");
   const [umpireInput, setUmpireInput] = useState<string[]>(["", ""]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Guard to prevent duplicate match generation
+  const isCreatingMatchRef = useRef(false);
 
   const fetchTournaments = useCallback(async () => {
     try {
@@ -313,6 +316,47 @@ const App: React.FC = () => {
       setShowScorerModal(true);
     }
   };
+
+  const handleAddTieUp = useCallback(async (t1: string, t2: string) => {
+    if (!isAdmin) return setShowPinModal(true);
+    if (isCreatingMatchRef.current) return;
+    
+    // Quick check to see if an identical uncompleted match was created in the last 2 seconds
+    const recentDuplicate = matches.find(m => 
+      m.status === 'scheduled' && 
+      ((m.team1Id === t1 && m.team2Id === t2) || (m.team1Id === t2 && m.team2Id === t1)) &&
+      (Date.now() - m.createdAt < 2000)
+    );
+    if (recentDuplicate) return;
+
+    try {
+      isCreatingMatchRef.current = true;
+      setIsRefreshing(true);
+      
+      const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;
+      const nm: Match = { 
+        id: crypto.randomUUID(), 
+        tournamentId: selectedTournamentId!, 
+        team1Id: t1, 
+        team2Id: t2, 
+        status: 'scheduled', 
+        format: 3, 
+        pointsTarget: 21, 
+        currentGame: 0, 
+        scores: [], 
+        createdAt: Date.now(), 
+        order: nextOrder 
+      };
+      
+      await api.saveMatch(nm);
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to add tie-up", err);
+    } finally {
+      isCreatingMatchRef.current = false;
+      setIsRefreshing(false);
+    }
+  }, [isAdmin, matches, selectedTournamentId, fetchData]);
 
   const calculateStandings = useCallback((): StandingsEntry[] => {
     const stats: Record<string, StandingsEntry> = {};
@@ -543,12 +587,7 @@ const App: React.FC = () => {
             standings={standings} 
             top4={top4} 
             isAdmin={isAdmin} 
-            onAddTieUp={(t1, t2) => {
-              if(!isAdmin) return setShowPinModal(true);
-              const nextOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1;
-              const nm: Match = { id: crypto.randomUUID(), tournamentId: selectedTournamentId!, team1Id: t1, team2Id: t2, status: 'scheduled', format: 3, pointsTarget: 21, currentGame: 0, scores: [], createdAt: Date.now(), order: nextOrder };
-              api.saveMatch(nm).then(() => fetchData());
-            }} 
+            onAddTieUp={handleAddTieUp} 
             onSelectTeam={handleSelectTeamForDashboard}
           />
         )}

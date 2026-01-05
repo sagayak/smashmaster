@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   Trophy, 
   Medal, 
@@ -35,7 +35,8 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
   // For interactive cards
   const [pair1, setPair1] = useState<string | null>(null);
 
-  const handleCreatePlayoff = () => {
+  const handleCreatePlayoff = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!isAdmin) return;
     if (selectedT1 && selectedT2 && selectedT1 !== selectedT2) {
       onAddTieUp(selectedT1, selectedT2);
@@ -45,13 +46,17 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
     }
   };
 
-  const handleQuickMatch = (idx1: number, idx2: number) => {
+  const handleQuickMatch = (e: React.MouseEvent, idx1: number, idx2: number) => {
+    e.preventDefault();
     if (!isAdmin || !top4[idx1] || !top4[idx2]) return;
     onAddTieUp(top4[idx1].teamId, top4[idx2].teamId);
   };
 
   const handleCardClick = (teamId: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!isAdmin) {
       onSelectTeam(teamId);
       return;
@@ -142,9 +147,9 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
             <div className="space-y-3">
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Standard Pairings</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <QuickMatchButton label="Semi 1 (1st vs 4th)" onClick={() => handleQuickMatch(0, 3)} disabled={top4.length < 4} />
-                <QuickMatchButton label="Semi 2 (2nd vs 3rd)" onClick={() => handleQuickMatch(1, 2)} disabled={top4.length < 3} />
-                <QuickMatchButton label="Finals (1st vs 2nd)" onClick={() => handleQuickMatch(0, 1)} disabled={top4.length < 2} highlight />
+                <QuickMatchButton label="Semi 1 (1st vs 4th)" onClick={(e) => handleQuickMatch(e, 0, 3)} disabled={top4.length < 4} />
+                <QuickMatchButton label="Semi 2 (2nd vs 3rd)" onClick={(e) => handleQuickMatch(e, 1, 2)} disabled={top4.length < 3} />
+                <QuickMatchButton label="Finals (1st vs 2nd)" onClick={(e) => handleQuickMatch(e, 0, 1)} disabled={top4.length < 2} highlight />
               </div>
             </div>
 
@@ -321,7 +326,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
               return (
                 <div 
                   key={t.teamId} 
-                  onClick={() => isAdmin ? handleCardClick(t.teamId) : onSelectTeam(t.teamId)}
+                  onClick={(e) => isAdmin ? handleCardClick(t.teamId, e) : onSelectTeam(t.teamId)}
                   className={`relative bg-white/[0.03] border-2 rounded-[2.5rem] p-8 flex flex-col items-center text-center group transition-all duration-500 cursor-pointer ${
                     isSelected 
                       ? 'border-indigo-500 bg-indigo-500/20 ring-8 ring-indigo-500/10 scale-105 shadow-[0_30px_60px_-12px_rgba(99,102,241,0.25)]' 
@@ -389,7 +394,7 @@ const Standings: React.FC<StandingsProps> = ({ standings, top4, onAddTieUp, onSe
   );
 };
 
-const QuickMatchButton = ({ label, onClick, disabled, highlight }: { label: string, onClick: () => void, disabled: boolean, highlight?: boolean }) => (
+const QuickMatchButton = ({ label, onClick, disabled, highlight }: { label: string, onClick: (e: React.MouseEvent) => void, disabled: boolean, highlight?: boolean }) => (
   <button 
     onClick={onClick}
     disabled={disabled}
