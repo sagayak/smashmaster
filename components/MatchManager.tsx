@@ -137,7 +137,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
 
     const validUmpires = umpireInputs.filter(u => u.trim() !== "");
     
-    // Auto-calculate winner if completed
+    // Auto-calculate winner if completed, OTHERWISE clear winnerId
     let winnerId: string | undefined = undefined;
     if (matchStatus === 'completed' && matchScores.length > 0) {
       const t1Wins = matchScores.filter(s => s.team1 > s.team2).length;
@@ -161,7 +161,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         umpireNames: validUmpires.length > 0 ? validUmpires : undefined,
         scores: matchScores,
         status: matchStatus,
-        winnerId: winnerId,
+        winnerId: winnerId, // This correctly sets to undefined (which api.ts now handles as null)
         scheduledAt: scheduledAt,
         order: matchOrder
       };
@@ -181,7 +181,8 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         createdAt: Date.now(),
         scheduledAt: scheduledAt,
         order: matchOrder,
-        umpireNames: validUmpires.length > 0 ? validUmpires : undefined
+        umpireNames: validUmpires.length > 0 ? validUmpires : undefined,
+        winnerId: undefined
       });
       resetForm();
     }
@@ -236,7 +237,8 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         createdAt: Date.now(),
         scheduledAt,
         order: currentOrder,
-        umpireNames: umpires.length > 0 ? umpires : undefined
+        umpireNames: umpires.length > 0 ? umpires : undefined,
+        winnerId: undefined
       });
     }
 

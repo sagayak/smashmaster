@@ -28,7 +28,11 @@ const toSnakeCasePayload = (obj: any) => {
   if (obj.tournamentId) snake.tournament_id = obj.tournamentId;
   if (obj.team1Id) snake.team1_id = obj.team1Id;
   if (obj.team2Id) snake.team2_id = obj.team2Id;
-  if (obj.winnerId !== undefined) snake.winner_id = obj.winnerId || null;
+
+  // Use hasOwnProperty to ensure we send null to the DB when clearing the winner
+  if (Object.prototype.hasOwnProperty.call(obj, 'winnerId')) {
+    snake.winner_id = obj.winnerId || null;
+  }
 
   const safeInt = (val: any, fallback: number = 0) => {
     const num = parseInt(val, 10);
@@ -47,7 +51,6 @@ const toSnakeCasePayload = (obj: any) => {
     snake.order_index = safeInt(obj.order, 1);
   }
   
-  // Ensure JSON fields are strictly arrays or empty arrays, never null/undefined
   if (Object.prototype.hasOwnProperty.call(obj, 'scores')) {
     snake.scores = Array.isArray(obj.scores) ? obj.scores : [];
   }
@@ -104,7 +107,6 @@ const fromSnakeCase = (data: any[]): any[] => {
 
     if (isMatch) {
       let scores = item.scores || [];
-      // Handle cases where scores might still be stringified in the DB
       if (typeof scores === 'string') {
         try { scores = JSON.parse(scores); } catch (e) { scores = []; }
       }
@@ -157,8 +159,9 @@ export const api = {
   async updateTournament(tournament: Tournament): Promise<void> {
     if (supabase) {
       const payload = toSnakeCasePayload(tournament);
+      const tid = tournament.id;
       delete payload.id;
-      const { error } = await supabase.from('tournaments').update(payload).eq('id', tournament.id);
+      const { error } = await supabase.from('tournaments').update(payload).eq('id', tid);
       if (error) throw error;
       return;
     }
@@ -274,7 +277,6 @@ export const api = {
   async updateMatch(match: Match): Promise<void> {
     if (supabase) {
       const payload = toSnakeCasePayload(match);
-      // Explicitly remove immutable fields
       delete payload.id;
       delete payload.tournament_id;
       const { error } = await supabase.from('matches').update(payload).eq('id', match.id);
