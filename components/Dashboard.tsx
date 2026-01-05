@@ -36,12 +36,13 @@ const DEFAULT_STRUCTURE: HandbookSectionData[] = [
   },
   {
     id: '2',
-    title: '2. Efficiency Bonus',
+    title: '2. Tie-Breaking Hierarchy',
     iconName: 'Activity',
-    content: 'The "Net Sets" logic remains the primary tie-breaker if points are equal.',
+    content: 'If points are equal, the "Net Sets" logic and Head-to-Head (H2H) encounters are prioritized.',
     items: [
-      { label: 'Net Sets', desc: 'Total Sets Won - Total Sets Lost.' },
-      { label: 'Tie-Breaker', desc: 'Closing matches in straight sets is the best way to maintain rank.' }
+      { label: 'Net Sets', desc: 'Sets Won - Sets Lost. First priority if points are tied.' },
+      { label: 'Head-to-Head', desc: 'If points and sets are equal, the winner of the direct encounter ranks higher.' },
+      { label: 'Point Diff', desc: 'Final tie-breaker based on aggregate points scored across all sets.' }
     ]
   },
   {

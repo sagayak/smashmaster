@@ -52,11 +52,12 @@ const DEFAULT_HANDBOOK: HandbookSectionData[] = [
     id: '2',
     title: '2. Tie-Breaking Hierarchy',
     iconName: 'Activity',
-    content: 'If total tournament points are equal, the following tie-breakers apply in order:',
+    content: 'If total tournament points are equal, the following tie-breakers apply in strict order:',
     items: [
-      { label: 'Match Wins', desc: 'The total number of overall match victories.' },
-      { label: 'Net Sets', desc: 'Calculated as (Total Sets Won - Total Sets Lost).' },
-      { label: 'Point Difference', desc: 'Total points scored minus total points conceded across all sets.' }
+      { label: '1. Match Wins', desc: 'The total number of overall match victories.' },
+      { label: '2. Net Sets', desc: 'Calculated as (Total Sets Won - Total Sets Lost).' },
+      { label: '3. Head-to-Head', desc: 'If teams are tied on points, wins, and sets, the winner of the direct encounter between those teams ranks higher.' },
+      { label: '4. Point Diff', desc: 'Total points scored minus total points conceded across all sets.' }
     ]
   },
   {
@@ -341,20 +342,19 @@ const App: React.FC = () => {
       if (match.winnerId === match.team1Id) {
         t1.wins += 1;
         t2.losses += 1;
-        // Points Calculation
-        if (t1Games === 2 && t2Games === 0) t1.points += 3; // 2-0 win
+        // Points Calculation: 2-0 gives 3, 2-1 gives 2, 1-2 gives 1
+        if (t1Games === 2 && t2Games === 0) t1.points += 3;
         else if (t1Games === 2 && t2Games === 1) {
-          t1.points += 2; // 2-1 win
-          t2.points += 1; // 1-2 loss
+          t1.points += 2;
+          t2.points += 1;
         }
       } else if (match.winnerId === match.team2Id) {
         t2.wins += 1;
         t1.losses += 1;
-        // Points Calculation
-        if (t2Games === 2 && t1Games === 0) t2.points += 3; // 0-2 win
+        if (t2Games === 2 && t1Games === 0) t2.points += 3;
         else if (t2Games === 2 && t1Games === 1) {
-          t2.points += 2; // 1-2 win
-          t1.points += 1; // 2-1 loss
+          t2.points += 2;
+          t1.points += 1;
         }
       }
 
@@ -377,7 +377,7 @@ const App: React.FC = () => {
     return Object.values(stats)
       .map(s => ({ ...s, pointDiff: s.pointsFor - s.pointsAgainst }))
       .sort((a, b) => {
-        // Priority 1: Tournament Points (3 for 2-0, 2 for 2-1, 1 for 1-2)
+        // Priority 1: Tournament Points
         if (b.points !== a.points) return b.points - a.points;
 
         // Priority 2: Match Wins
@@ -388,7 +388,18 @@ const App: React.FC = () => {
         const bNetGames = b.gamesWon - b.gamesLost;
         if (bNetGames !== aNetGames) return bNetGames - aNetGames;
         
-        // Priority 4: Point Difference
+        // Priority 4: Head-to-Head
+        const h2hMatch = matches.find(m => 
+          m.status === 'completed' && 
+          ((m.team1Id === a.teamId && m.team2Id === b.teamId) || 
+           (m.team1Id === b.teamId && m.team2Id === a.teamId))
+        );
+        if (h2hMatch) {
+          if (h2hMatch.winnerId === a.teamId) return -1;
+          if (h2hMatch.winnerId === b.teamId) return 1;
+        }
+
+        // Priority 5: Point Difference
         return b.pointDiff - a.pointDiff;
       });
   }, [teams, matches]);
