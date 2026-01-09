@@ -107,7 +107,6 @@ const App: React.FC = () => {
   const [umpireInput, setUmpireInput] = useState<string[]>(["", ""]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Guard to prevent duplicate match generation
   const isCreatingMatchRef = useRef(false);
 
   const fetchTournaments = useCallback(async () => {
@@ -314,16 +313,8 @@ const App: React.FC = () => {
     await api.updateMatch(updatedMatch);
     setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
     
-    const team1 = teams.find(t => t.id === match.team1Id);
-    const team2 = teams.find(t => t.id === match.team2Id);
-
     setShowUmpireModal(false);
-
-    if ((team1 && team1.members.length > 2) || (team2 && team2.members.length > 2)) {
-      setShowLineupModal(true);
-    } else {
-      setView('scorer');
-    }
+    setShowLineupModal(true);
   };
 
   const handleLineupSubmit = async (lineups: MatchLineup[]) => {
@@ -335,7 +326,8 @@ const App: React.FC = () => {
     setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
     
     setShowLineupModal(false);
-    setView('scorer');
+    // Only switch view if we are not already in scorer
+    if (view !== 'scorer') setView('scorer');
   };
 
   const handleLogout = () => {
@@ -361,6 +353,11 @@ const App: React.FC = () => {
     } else {
       setShowScorerModal(true);
     }
+  };
+
+  const handleLineupRequested = (id: string) => {
+    setActiveMatchId(id);
+    setShowLineupModal(true);
   };
 
   const handleAddTieUp = useCallback(async (t1: string, t2: string) => {
@@ -587,7 +584,7 @@ const App: React.FC = () => {
           team1={teams.find(t => t.id === activeMatch.team1Id)!}
           team2={teams.find(t => t.id === activeMatch.team2Id)!}
           onSubmit={handleLineupSubmit}
-          onCancel={() => { setShowLineupModal(false); setView('scorer'); }}
+          onCancel={() => setShowLineupModal(false)}
         />
       )}
       
@@ -624,7 +621,7 @@ const App: React.FC = () => {
             onAdminLogin={() => setShowPinModal(true)} 
           />
         )}
-        {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={handleUpdateMatch} onFinish={() => setView('matches')} />}
+        {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={handleUpdateMatch} onFinish={() => setView('matches')} onEditLineup={() => setShowLineupModal(true)} />}
         {view === 'standings' && (
           <Standings 
             standings={standings} 
@@ -768,13 +765,13 @@ const LineupModal = ({ match, team1, team2, onSubmit, onCancel }: { match: Match
             className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2"
           >
             <CheckCircle2 className="w-5 h-5" />
-            Apply & Start
+            Apply & Save
           </button>
           <button 
             onClick={onCancel}
             className="px-8 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
           >
-            Skip Selection
+            Discard
           </button>
         </div>
       </div>

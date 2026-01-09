@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Match, Team, GameScore, MatchStatus } from '../types';
-import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3, Target, PartyPopper, Users } from 'lucide-react';
+import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3, Target, PartyPopper, Users, UserPlus } from 'lucide-react';
 
 interface MatchScorerProps {
   match: Match;
@@ -9,9 +9,10 @@ interface MatchScorerProps {
   team2: Team;
   onUpdate: (match: Match) => void;
   onFinish: () => void;
+  onEditLineup: () => void;
 }
 
-const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate, onFinish }) => {
+const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate, onFinish, onEditLineup }) => {
   const [t1Score, setT1Score] = useState(0);
   const [t2Score, setT2Score] = useState(0);
   const [history, setHistory] = useState<{ t1: number, t2: number }[]>([]);
@@ -156,10 +157,16 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
 
       {/* Header Info */}
       <div className="flex items-center justify-between mb-8 relative z-10 shrink-0">
-        <button onClick={onFinish} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">
-          <ChevronLeft className="w-4 h-4" />
-          Exit
-        </button>
+        <div className="flex gap-2">
+          <button onClick={onFinish} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">
+            <ChevronLeft className="w-4 h-4" />
+            Exit
+          </button>
+          <button onClick={onEditLineup} className="flex items-center gap-2 bg-indigo-600/50 px-4 py-2 rounded-xl text-white font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 transition-all border border-indigo-500/30">
+            <UserPlus className="w-4 h-4" />
+            Lineup
+          </button>
+        </div>
         
         <div className="flex flex-col items-center">
           <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.5em] mb-3">

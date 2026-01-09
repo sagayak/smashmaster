@@ -21,7 +21,8 @@ import {
   Download,
   Table as TableIcon,
   ArrowUpAZ,
-  Users
+  Users,
+  User
 } from 'lucide-react';
 import { Team, Match, GameScore, MatchStatus } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
@@ -104,22 +105,6 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     setIsBulkAdding(false);
   };
 
-  const handleScoreChange = (index: number, teamNum: 1 | 2, value: string) => {
-    const nextScores = [...matchScores];
-    const numValue = parseInt(value) || 0;
-    if (teamNum === 1) nextScores[index].team1 = numValue;
-    else nextScores[index].team2 = numValue;
-    setMatchScores(nextScores);
-  };
-
-  const addScoreRow = () => {
-    setMatchScores([...matchScores, { team1: 0, team2: 0 }]);
-  };
-
-  const removeScoreRow = (index: number) => {
-    setMatchScores(matchScores.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
@@ -179,76 +164,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     }
   };
 
-  const handleBulkSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isAdmin) return;
-    const lines = bulkInput.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    const newMatches: Match[] = [];
-    let currentOrder = matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) : 0;
-    let skippedLines: string[] = [];
-
-    for (const line of lines) {
-      const parts = line.split(',').map(s => s?.trim());
-      if (parts.length < 2) continue;
-      const [t1Name, t2Name, pts, sets, u1, u2, sched] = parts;
-      const team1 = teams.find(t => t.name.toLowerCase() === t1Name?.toLowerCase());
-      const team2 = teams.find(t => t.name.toLowerCase() === t2Name?.toLowerCase());
-      if (!team1 || !team2) {
-        skippedLines.push(line);
-        continue;
-      }
-      const points = [15, 21, 30].includes(parseInt(pts)) ? (parseInt(pts) as 15|21|30) : 21;
-      const formatVal = [1, 3, 5].includes(parseInt(sets)) ? (parseInt(sets) as 1|3|5) : 3;
-      const umpires = [u1, u2].filter(u => u && u.length > 0);
-      let scheduledAt: number | undefined = undefined;
-      if (sched) {
-        const parsedDate = Date.parse(sched);
-        if (!isNaN(parsedDate)) scheduledAt = parsedDate;
-      }
-      currentOrder++;
-      newMatches.push({
-        id: crypto.randomUUID(),
-        tournamentId: tournamentId,
-        team1Id: team1.id,
-        team2Id: team2.id,
-        status: 'scheduled',
-        format: formatVal,
-        pointsTarget: points,
-        currentGame: 0,
-        scores: [],
-        createdAt: Date.now(),
-        scheduledAt,
-        order: currentOrder,
-        umpireNames: umpires.length > 0 ? umpires : undefined,
-        winnerId: undefined
-      });
-    }
-
-    if (skippedLines.length > 0) alert(`Skipped (team not found):\n${skippedLines.join('\n')}`);
-    if (newMatches.length > 0) { onBulkCreate(newMatches); resetForm(); }
-  };
-
   const getTeamName = (id: string) => teams.find(t => t.id === id)?.name || 'Deleted Team';
-
-  const exportToCSV = () => {
-    const headers = ['Order', 'Date/Time', 'Match', 'Umpires', 'Status'];
-    const rows = sortedMatches.map(m => [
-      m.order,
-      m.scheduledAt ? new Date(m.scheduledAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'TBD',
-      `${getTeamName(m.team1Id)} vs ${getTeamName(m.team2Id)}`,
-      m.umpireNames?.join('; ') || 'None',
-      m.status
-    ]);
-    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `tournament_schedule_${new Date().getTime()}.csv`);
-    link.click();
-  };
-
-  const eligibleUmpireTeams = teams.filter(t => t.id !== team1Id && t.id !== team2Id);
 
   return (
     <div className="space-y-12">
@@ -319,35 +235,112 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {sortedMatches.map((match) => (
-          <div key={match.id} className={`relative border rounded-2xl overflow-hidden transition-all duration-300 ${match.status === 'live' ? 'bg-indigo-50/40 border-indigo-600 ring-2 ring-indigo-500/20 shadow-xl' : 'bg-white border-slate-200'}`}>
-            {match.status === 'live' && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-indigo-500 to-red-500 animate-[gradient_3s_linear_infinite]"></div>}
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2"><div className="bg-slate-900 text-white px-2 py-1 rounded text-[10px] font-black">#{match.order}</div><span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${match.status === 'completed' ? 'bg-slate-100 text-slate-600' : match.status === 'live' ? 'bg-red-600 text-white' : 'bg-emerald-100 text-emerald-700'}`}>{match.status}</span></div>
-                  {match.scheduledAt && <div className="flex items-center gap-1.5 text-indigo-600 text-[10px] font-black uppercase"><Calendar className="w-3 h-3" />{new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
+        {sortedMatches.map((match) => {
+          const t1 = teams.find(t => t.id === match.team1Id);
+          const t2 = teams.find(t => t.id === match.team2Id);
+          
+          return (
+            <div key={match.id} className={`relative border rounded-2xl overflow-hidden transition-all duration-300 ${match.status === 'live' ? 'bg-indigo-50/40 border-indigo-600 ring-2 ring-indigo-500/20 shadow-xl' : 'bg-white border-slate-200'}`}>
+              {match.status === 'live' && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-indigo-500 to-red-500 animate-[gradient_3s_linear_infinite]"></div>}
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2"><div className="bg-slate-900 text-white px-2 py-1 rounded text-[10px] font-black">#{match.order}</div><span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${match.status === 'completed' ? 'bg-slate-100 text-slate-600' : match.status === 'live' ? 'bg-red-600 text-white' : 'bg-emerald-100 text-emerald-700'}`}>{match.status}</span></div>
+                    {match.scheduledAt && <div className="flex items-center gap-1.5 text-indigo-600 text-[10px] font-black uppercase"><Calendar className="w-3 h-3" />{new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
+                  </div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded border">Best of {match.format} • {match.pointsTarget} Pts</div>
                 </div>
-                <div className="text-[10px] font-black text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded border">Best of {match.format} • {match.pointsTarget} Pts</div>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 text-center"><div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center font-black text-lg mb-2 ${match.winnerId === match.team1Id ? 'bg-amber-400 text-white shadow-lg' : 'bg-slate-100'}`}>{getTeamName(match.team1Id).charAt(0)}</div><h4 className="font-bold text-sm">{getTeamName(match.team1Id)}</h4></div>
-                <div className="text-xl font-black text-slate-300 italic">VS</div>
-                <div className="flex-1 text-center"><div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center font-black text-lg mb-2 ${match.winnerId === match.team2Id ? 'bg-amber-400 text-white shadow-lg' : 'bg-slate-100'}`}>{getTeamName(match.team2Id).charAt(0)}</div><h4 className="font-bold text-sm">{getTeamName(match.team2Id)}</h4></div>
-              </div>
-            </div>
-            <div className={`px-4 py-3 flex justify-between items-center border-t ${match.status === 'live' ? 'bg-indigo-100/30' : 'bg-slate-50'}`}>
-              <div className="flex gap-1">
-                {isAdmin && <><button onClick={() => handleStartEditing(match)} className="p-2 text-slate-400 hover:text-indigo-600"><Edit3 className="w-4 h-4" /></button><button onClick={() => onDelete(match.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button></>}
-              </div>
-              <div className="flex gap-2">
-                {match.status !== 'completed' && (
-                  <button onClick={() => onStart(match.id)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${match.status === 'live' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-emerald-600 text-white'}`}>{match.status === 'live' ? 'Resume' : 'Start Match'}</button>
+
+                <div className="flex items-start justify-between gap-4 mb-6">
+                  {/* Team 1 Section */}
+                  <div className="flex-1 text-center">
+                    <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center font-black text-xl mb-2 transition-all ${match.winnerId === match.team1Id ? 'bg-amber-400 text-white shadow-lg ring-4 ring-amber-100' : 'bg-indigo-50 text-indigo-600'}`}>
+                      {t1?.name.charAt(0) || 'D'}
+                    </div>
+                    <h4 className="font-black text-sm text-slate-900 truncate px-2">{t1?.name || 'Deleted Team'}</h4>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center pt-2">
+                    <div className="text-xl font-black text-slate-300 italic mb-1">VS</div>
+                    {match.status !== 'scheduled' && (
+                      <div className="bg-slate-900 text-white px-3 py-1 rounded-lg text-xs font-black tabular-nums shadow-sm">
+                        {match.scores.filter(s => s.team1 > s.team2).length} - {match.scores.filter(s => s.team2 > s.team1).length}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Team 2 Section */}
+                  <div className="flex-1 text-center">
+                    <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center font-black text-xl mb-2 transition-all ${match.winnerId === match.team2Id ? 'bg-amber-400 text-white shadow-lg ring-4 ring-amber-100' : 'bg-emerald-50 text-emerald-600'}`}>
+                      {t2?.name.charAt(0) || 'D'}
+                    </div>
+                    <h4 className="font-black text-sm text-slate-900 truncate px-2">{t2?.name || 'Deleted Team'}</h4>
+                  </div>
+                </div>
+
+                {/* Lineup Display */}
+                {match.lineups && match.lineups.length > 0 && (
+                  <div className="space-y-3 pt-4 border-t border-slate-50">
+                    <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
+                      <Users className="w-3 h-3" />
+                      Match Progress (Per Game Lineups)
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {match.lineups.slice(0, match.format).map((lineup, idx) => {
+                        const isCurrentSet = match.status === 'live' && idx === match.scores.length;
+                        const isPlayed = idx < match.scores.length;
+                        const score = isPlayed ? match.scores[idx] : null;
+
+                        return (
+                          <div key={idx} className={`flex items-center justify-between p-2.5 rounded-xl border text-[10px] transition-all ${isCurrentSet ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg ring-2 ring-indigo-500/20' : isPlayed ? 'bg-slate-100 border-slate-200' : 'bg-slate-50/50 border-slate-100 opacity-40'}`}>
+                             <div className="flex items-center gap-2 w-8">
+                               <span className={`font-black ${isCurrentSet ? 'text-indigo-200' : 'text-slate-400'}`}>G{idx+1}</span>
+                             </div>
+                             <div className="flex-1 flex justify-between items-center px-4">
+                               <div className="flex flex-col items-start gap-0.5 max-w-[42%]">
+                                 {lineup.team1Players.map((p, pi) => p && <span key={pi} className={`font-bold truncate w-full ${isCurrentSet ? 'text-white' : 'text-slate-600'}`}>{p}</span>)}
+                               </div>
+                               <div className="flex flex-col items-center">
+                                 {isPlayed ? (
+                                   <div className={`font-black tabular-nums px-2 py-0.5 rounded-md ${isCurrentSet ? 'bg-white/20' : 'bg-slate-900 text-white'}`}>
+                                     {score?.team1}-{score?.team2}
+                                   </div>
+                                 ) : (
+                                   <div className={`text-[8px] font-black uppercase ${isCurrentSet ? 'text-white/40' : 'text-slate-300'}`}>VS</div>
+                                 )}
+                               </div>
+                               <div className="flex flex-col items-end gap-0.5 max-w-[42%] text-right">
+                                 {lineup.team2Players.map((p, pi) => p && <span key={pi} className={`font-bold truncate w-full ${isCurrentSet ? 'text-white' : 'text-slate-600'}`}>{p}</span>)}
+                               </div>
+                             </div>
+                             {isCurrentSet && <div className="bg-red-400 w-2 h-2 rounded-full animate-pulse ml-1"></div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
+              
+              <div className={`px-4 py-3 flex justify-between items-center border-t ${match.status === 'live' ? 'bg-indigo-100/30' : 'bg-slate-50'}`}>
+                <div className="flex gap-1">
+                  {isAdmin && <><button onClick={() => handleStartEditing(match)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 className="w-4 h-4" /></button><button onClick={() => onDelete(match.id)} className="p-2 text-slate-400 hover:text-red-600 transition-colors"><Trash2 className="w-4 h-4" /></button></>}
+                </div>
+                <div className="flex gap-2">
+                  {match.status !== 'completed' && (
+                    <button 
+                      onClick={() => onStart(match.id)} 
+                      className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${match.status === 'live' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-900 text-white hover:bg-black'}`}
+                    >
+                      {match.status === 'live' ? <Activity className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      {match.status === 'live' ? 'Resume' : 'Start'}
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
