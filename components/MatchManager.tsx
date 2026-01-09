@@ -6,23 +6,17 @@ import {
   Play, 
   Trash2, 
   Calendar, 
-  Trophy, 
-  Zap, 
   Activity, 
   Lock, 
   Edit3, 
-  Hash, 
-  UserCheck, 
-  X, 
   Save, 
   Settings2,
-  Clock,
   FileText,
-  Download,
-  Table as TableIcon,
   ArrowUpAZ,
   Users,
-  User
+  Table as TableIcon,
+  ChevronRight,
+  Clock
 } from 'lucide-react';
 import { Team, Match, GameScore, MatchStatus } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
@@ -42,9 +36,7 @@ interface MatchManagerProps {
 
 const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentId, onCreate, onBulkCreate, onUpdate, onDelete, onStart, isAdmin, onAdminLogin }) => {
   const [isCreating, setIsCreating] = useState(false);
-  const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
-  const [bulkInput, setBulkInput] = useState('');
   
   const [team1Id, setTeam1Id] = useState('');
   const [team2Id, setTeam2Id] = useState('');
@@ -76,9 +68,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     setMatchTime('');
     setMatchOrder(matches.length > 0 ? Math.max(...matches.map(m => m.order || 0)) + 1 : 1);
     setIsCreating(false);
-    setIsBulkAdding(false);
     setEditingMatch(null);
-    setBulkInput('');
   };
 
   const handleStartEditing = (match: Match) => {
@@ -100,9 +90,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       setMatchDate('');
       setMatchTime('');
     }
-    
     setIsCreating(false);
-    setIsBulkAdding(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -168,22 +156,13 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
 
   return (
     <div className="space-y-12">
-      <style>{`
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
-
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Matches</h2>
-          <p className="text-slate-500">Manual tie-ups and game management</p>
+          <p className="text-slate-500">Scheduled tie-ups and court progression</p>
         </div>
         {isAdmin ? (
           <div className="flex gap-2">
-            <button onClick={() => { resetForm(); setIsBulkAdding(true); }} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition-all border border-slate-200"><FileText className="w-5 h-5" />Bulk Import</button>
             <button onClick={() => { resetForm(); setIsCreating(true); }} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all" disabled={teams.length < 2}><Plus className="w-5 h-5" />New Tie-up</button>
           </div>
         ) : (
@@ -234,6 +213,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         </div>
       )}
 
+      {/* Main Grid View */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {sortedMatches.map((match) => {
           const t1 = teams.find(t => t.id === match.team1Id);
@@ -241,49 +221,36 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
           
           return (
             <div key={match.id} className={`relative border rounded-2xl overflow-hidden transition-all duration-300 ${match.status === 'live' ? 'bg-indigo-50/40 border-indigo-600 ring-2 ring-indigo-500/20 shadow-xl' : 'bg-white border-slate-200'}`}>
-              {match.status === 'live' && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-indigo-500 to-red-500 animate-[gradient_3s_linear_infinite]"></div>}
               <div className="p-6">
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2"><div className="bg-slate-900 text-white px-2 py-1 rounded text-[10px] font-black">#{match.order}</div><span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${match.status === 'completed' ? 'bg-slate-100 text-slate-600' : match.status === 'live' ? 'bg-red-600 text-white' : 'bg-emerald-100 text-emerald-700'}`}>{match.status}</span></div>
                     {match.scheduledAt && <div className="flex items-center gap-1.5 text-indigo-600 text-[10px] font-black uppercase"><Calendar className="w-3 h-3" />{new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
                   </div>
-                  <div className="text-[10px] font-black text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded border">Best of {match.format} • {match.pointsTarget} Pts</div>
                 </div>
 
                 <div className="flex items-start justify-between gap-4 mb-6">
-                  {/* Team 1 Section */}
                   <div className="flex-1 text-center">
-                    <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center font-black text-xl mb-2 transition-all ${match.winnerId === match.team1Id ? 'bg-amber-400 text-white shadow-lg ring-4 ring-amber-100' : 'bg-indigo-50 text-indigo-600'}`}>
+                    <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center font-black text-xl mb-2 transition-all ${match.winnerId === match.team1Id ? 'bg-amber-400 text-white shadow-lg' : 'bg-indigo-50 text-indigo-600'}`}>
                       {t1?.name.charAt(0) || 'D'}
                     </div>
                     <h4 className="font-black text-sm text-slate-900 truncate px-2">{t1?.name || 'Deleted Team'}</h4>
                   </div>
-
                   <div className="flex flex-col items-center justify-center pt-2">
                     <div className="text-xl font-black text-slate-300 italic mb-1">VS</div>
-                    {match.status !== 'scheduled' && (
-                      <div className="bg-slate-900 text-white px-3 py-1 rounded-lg text-xs font-black tabular-nums shadow-sm">
-                        {match.scores.filter(s => s.team1 > s.team2).length} - {match.scores.filter(s => s.team2 > s.team1).length}
-                      </div>
-                    )}
                   </div>
-
-                  {/* Team 2 Section */}
                   <div className="flex-1 text-center">
-                    <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center font-black text-xl mb-2 transition-all ${match.winnerId === match.team2Id ? 'bg-amber-400 text-white shadow-lg ring-4 ring-amber-100' : 'bg-emerald-50 text-emerald-600'}`}>
+                    <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center font-black text-xl mb-2 transition-all ${match.winnerId === match.team2Id ? 'bg-amber-400 text-white shadow-lg' : 'bg-emerald-50 text-emerald-600'}`}>
                       {t2?.name.charAt(0) || 'D'}
                     </div>
                     <h4 className="font-black text-sm text-slate-900 truncate px-2">{t2?.name || 'Deleted Team'}</h4>
                   </div>
                 </div>
 
-                {/* Lineup Display */}
                 {match.lineups && match.lineups.length > 0 && (
                   <div className="space-y-3 pt-4 border-t border-slate-50">
                     <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
-                      <Users className="w-3 h-3" />
-                      Match Progress (Per Game Lineups)
+                      <Users className="w-3 h-3" /> Match Progress
                     </div>
                     <div className="grid grid-cols-1 gap-2">
                       {match.lineups.slice(0, match.format).map((lineup, idx) => {
@@ -292,28 +259,17 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                         const score = isPlayed ? match.scores[idx] : null;
 
                         return (
-                          <div key={idx} className={`flex items-center justify-between p-2.5 rounded-xl border text-[10px] transition-all ${isCurrentSet ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg ring-2 ring-indigo-500/20' : isPlayed ? 'bg-slate-100 border-slate-200' : 'bg-slate-50/50 border-slate-100 opacity-40'}`}>
-                             <div className="flex items-center gap-2 w-8">
-                               <span className={`font-black ${isCurrentSet ? 'text-indigo-200' : 'text-slate-400'}`}>G{idx+1}</span>
-                             </div>
+                          <div key={idx} className={`flex items-center justify-between p-2.5 rounded-xl border text-[10px] transition-all ${isCurrentSet ? 'bg-indigo-600 text-white' : isPlayed ? 'bg-slate-100' : 'bg-slate-50/50 opacity-40'}`}>
+                             <span className="font-black w-6">G{idx+1}</span>
                              <div className="flex-1 flex justify-between items-center px-4">
-                               <div className="flex flex-col items-start gap-0.5 max-w-[42%]">
-                                 {lineup.team1Players.map((p, pi) => p && <span key={pi} className={`font-bold truncate w-full ${isCurrentSet ? 'text-white' : 'text-slate-600'}`}>{p}</span>)}
-                               </div>
-                               <div className="flex flex-col items-center">
-                                 {isPlayed ? (
-                                   <div className={`font-black tabular-nums px-2 py-0.5 rounded-md ${isCurrentSet ? 'bg-white/20' : 'bg-slate-900 text-white'}`}>
-                                     {score?.team1}-{score?.team2}
-                                   </div>
-                                 ) : (
-                                   <div className={`text-[8px] font-black uppercase ${isCurrentSet ? 'text-white/40' : 'text-slate-300'}`}>VS</div>
-                                 )}
-                               </div>
-                               <div className="flex flex-col items-end gap-0.5 max-w-[42%] text-right">
-                                 {lineup.team2Players.map((p, pi) => p && <span key={pi} className={`font-bold truncate w-full ${isCurrentSet ? 'text-white' : 'text-slate-600'}`}>{p}</span>)}
-                               </div>
+                               <span className="truncate max-w-[42%] font-bold">{lineup.team1Players.join(' & ')}</span>
+                               {isPlayed ? (
+                                 <span className="font-black">{score?.team1}-{score?.team2}</span>
+                               ) : (
+                                 <span className="text-[8px] font-black uppercase">VS</span>
+                               )}
+                               <span className="truncate max-w-[42%] font-bold text-right">{lineup.team2Players.join(' & ')}</span>
                              </div>
-                             {isCurrentSet && <div className="bg-red-400 w-2 h-2 rounded-full animate-pulse ml-1"></div>}
                           </div>
                         );
                       })}
@@ -326,22 +282,93 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                 <div className="flex gap-1">
                   {isAdmin && <><button onClick={() => handleStartEditing(match)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 className="w-4 h-4" /></button><button onClick={() => onDelete(match.id)} className="p-2 text-slate-400 hover:text-red-600 transition-colors"><Trash2 className="w-4 h-4" /></button></>}
                 </div>
-                <div className="flex gap-2">
-                  {match.status !== 'completed' && (
-                    <button 
-                      onClick={() => onStart(match.id)} 
-                      className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${match.status === 'live' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-900 text-white hover:bg-black'}`}
-                    >
-                      {match.status === 'live' ? <Activity className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                      {match.status === 'live' ? 'Resume' : 'Start'}
-                    </button>
-                  )}
-                </div>
+                {match.status !== 'completed' && (
+                  <button 
+                    onClick={() => onStart(match.id)} 
+                    className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${match.status === 'live' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-900 text-white hover:bg-black'}`}
+                  >
+                    {match.status === 'live' ? <Activity className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    {match.status === 'live' ? 'Resume' : 'Start'}
+                  </button>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Match Ledger Table */}
+      <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-900 p-2 rounded-xl"><TableIcon className="w-5 h-5 text-white" /></div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Match Ledger</h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">Full Schedule (Sorted by Date & Order)</p>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Sequence</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Date/Time</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Matchup</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Result</th>
+                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {sortedMatches.map(m => {
+                const t1 = getTeamName(m.team1Id);
+                const t2 = getTeamName(m.team2Id);
+                const t1Games = m.scores.filter(s => s.team1 > s.team2).length;
+                const t2Games = m.scores.filter(s => s.team2 > s.team1).length;
+
+                return (
+                  <tr key={m.id} className="hover:bg-indigo-50 transition-all group">
+                    <td className="px-8 py-5">
+                      <div className="font-black text-slate-400">#{m.order}</div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col">
+                        <div className="text-xs font-black text-slate-900 flex items-center gap-1.5"><Calendar className="w-3 h-3 text-indigo-500" />{m.scheduledAt ? new Date(m.scheduledAt).toLocaleDateString() : 'TBD'}</div>
+                        <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 mt-0.5"><Clock className="w-3 h-3" />{m.scheduledAt ? new Date(m.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <span className={`font-black ${m.winnerId === m.team1Id ? 'text-indigo-600' : 'text-slate-700'}`}>{t1}</span>
+                        <span className="text-[9px] font-black text-slate-300">VS</span>
+                        <span className={`font-black ${m.winnerId === m.team2Id ? 'text-indigo-600' : 'text-slate-700'}`}>{t2}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                       {m.status === 'completed' ? (
+                         <div className="inline-flex items-center gap-2 bg-slate-900 text-white px-2 py-0.5 rounded-lg font-black tabular-nums text-xs">
+                           {t1Games} - {t2Games}
+                         </div>
+                       ) : (
+                         <span className="text-slate-300 font-black">--</span>
+                       )}
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                         m.status === 'completed' ? 'bg-slate-100 text-slate-400' :
+                         m.status === 'live' ? 'bg-red-500 text-white shadow-lg shadow-red-100' :
+                         'bg-emerald-500 text-white'
+                       }`}>
+                         {m.status}
+                       </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };
