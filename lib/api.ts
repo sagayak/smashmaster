@@ -58,6 +58,10 @@ const toSnakeCasePayload = (obj: any) => {
   if (Object.prototype.hasOwnProperty.call(obj, 'umpireNames')) {
     snake.umpire_names = Array.isArray(obj.umpireNames) ? obj.umpireNames : [];
   }
+
+  if (Object.prototype.hasOwnProperty.call(obj, 'lineups')) {
+    snake.lineups = Array.isArray(obj.lineups) ? obj.lineups : [];
+  }
   
   if (obj.createdAt) {
     snake.created_at = new Date(obj.createdAt).toISOString();
@@ -110,6 +114,10 @@ const fromSnakeCase = (data: any[]): any[] => {
       if (typeof scores === 'string') {
         try { scores = JSON.parse(scores); } catch (e) { scores = []; }
       }
+      let lineups = item.lineups || [];
+      if (typeof lineups === 'string') {
+        try { lineups = JSON.parse(lineups); } catch (e) { lineups = []; }
+      }
       return {
         ...base,
         tournamentId: item.tournament_id,
@@ -122,6 +130,7 @@ const fromSnakeCase = (data: any[]): any[] => {
         order: item.order_index ?? 1,
         umpireNames: Array.isArray(item.umpire_names) ? item.umpire_names : [],
         scores: Array.isArray(scores) ? scores : [],
+        lineups: Array.isArray(lineups) ? lineups : [],
         scheduledAt: item.scheduled_at ? new Date(item.scheduled_at).getTime() : undefined,
       } as Match;
     }

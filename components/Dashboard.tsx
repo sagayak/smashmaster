@@ -4,7 +4,7 @@ import {
   Users, Swords, Trophy, Play, Plus, ArrowRight, RotateCcw, Lock, Share2, 
   Check, X, Medal, Settings2, CheckCircle2, BookOpen, Info, HelpCircle, 
   Activity, ListChecks, Target, ChevronRight, Edit3, Trash2, GripVertical, PlusCircle, RefreshCcw,
-  Printer, Download, Upload, Copy, FileJson, FileText, Unlock, AlertTriangle
+  Printer, Download, Upload, Copy, FileJson, FileText, Unlock, AlertTriangle, Key
 } from 'lucide-react';
 import { Team, Match, StandingsEntry, ViewState, Tournament, HandbookSectionData } from '../types';
 
@@ -70,6 +70,8 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavigate, onReset, isAdmin, onAdminLogin, tournament, onUpdateTournament, onSelectTeam, onAddTeam, onResetTournamentData }) => {
   const [copied, setCopied] = useState(false);
   const [isEditingFormat, setIsEditingFormat] = useState(false);
+  const [isEditingPin, setIsEditingPin] = useState(false);
+  const [newPin, setNewPin] = useState(tournament?.matchPasscode || '0000');
   const [quickTeamName, setQuickTeamName] = useState('');
   const [isAddingQuick, setIsAddingQuick] = useState(false);
   const [showHandbook, setShowHandbook] = useState(false);
@@ -185,6 +187,13 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
     setIsEditingFormat(false);
   };
 
+  const handleUpdatePin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tournament || !newPin.trim()) return;
+    onUpdateTournament({ ...tournament, matchPasscode: newPin.trim() });
+    setIsEditingPin(false);
+  };
+
   const toggleLock = () => {
     if (!tournament || !isAdmin) return;
     onUpdateTournament({ ...tournament, isLocked: !tournament.isLocked });
@@ -290,6 +299,41 @@ const Dashboard: React.FC<DashboardProps> = ({ teams, matches, standings, onNavi
                   </div>
                 )}
               </div>
+
+              {/* Scorer PIN Management */}
+              {isAdmin && (
+                <div className="relative">
+                  <button 
+                    onClick={() => setIsEditingPin(!isEditingPin)}
+                    className="bg-slate-800 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-b-4 border-slate-950 flex items-center gap-2 transition-all hover:bg-slate-700 active:translate-y-0.5 active:border-b-0 backdrop-blur-sm"
+                  >
+                    <Key className="w-3.5 h-3.5 text-amber-400" />
+                    PIN: {tournament?.matchPasscode}
+                  </button>
+                  {isEditingPin && (
+                    <div className="absolute top-full mt-2 left-0 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-2xl p-4 z-50 min-w-[240px] animate-in slide-in-from-top-2">
+                       <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Update Scorer Passcode</div>
+                       <form onSubmit={handleUpdatePin} className="space-y-3">
+                         <input 
+                           type="text" 
+                           value={newPin}
+                           onChange={(e) => setNewPin(e.target.value)}
+                           className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2 text-sm font-black tracking-widest outline-none focus:border-indigo-500"
+                           placeholder="New PIN (e.g. 0000)"
+                         />
+                         <div className="flex gap-2">
+                            <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors">
+                              Update
+                            </button>
+                            <button type="button" onClick={() => setIsEditingPin(false)} className="px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                              Cancel
+                            </button>
+                         </div>
+                       </form>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Tournament Lock Button */}
               {isAdmin && (

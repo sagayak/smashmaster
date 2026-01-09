@@ -32,6 +32,11 @@ export interface GameScore {
   team2: number;
 }
 
+export interface MatchLineup {
+  team1Players: string[];
+  team2Players: string[];
+}
+
 export interface Match {
   id: string;
   tournamentId: string;
@@ -47,6 +52,7 @@ export interface Match {
   scheduledAt?: number; // Optional timestamp for match date/time
   order: number; 
   umpireNames?: string[]; 
+  lineups?: MatchLineup[]; // Optional lineup selection per game
 }
 
 export interface StandingsEntry {

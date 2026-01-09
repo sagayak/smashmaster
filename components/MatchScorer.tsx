@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Match, Team, GameScore, MatchStatus } from '../types';
-import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3, Target, PartyPopper } from 'lucide-react';
+import { ChevronLeft, Trophy, RotateCcw, CheckCircle2, RotateCw, PlusCircle, UserCheck, Minus, Plus, Edit3, Target, PartyPopper, Users } from 'lucide-react';
 
 interface MatchScorerProps {
   match: Match;
@@ -21,6 +21,8 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
   const t1GamesWon = currentScores.filter(s => s.team1 > s.team2).length;
   const t2GamesWon = currentScores.filter(s => s.team2 > s.team1).length;
   const gamesNeeded = Math.ceil(match.format / 2);
+
+  const activeLineup = match.lineups ? match.lineups[match.scores.length] : null;
 
   const addPoint = (team: 1 | 2) => {
     if (showMatchWinnerOverlay) return;
@@ -216,6 +218,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
           onInput={(val) => handleScoreInput(1, val)}
           colorClass="indigo"
           side="1"
+          activePlayers={activeLineup?.team1Players}
         />
 
         <ScoreSide 
@@ -228,6 +231,7 @@ const MatchScorer: React.FC<MatchScorerProps> = ({ match, team1, team2, onUpdate
           onInput={(val) => handleScoreInput(2, val)}
           colorClass="emerald"
           side="2"
+          activePlayers={activeLineup?.team2Players}
         />
       </div>
 
@@ -276,9 +280,10 @@ interface ScoreSideProps {
   onInput: (val: string) => void;
   colorClass: 'indigo' | 'emerald';
   side: string;
+  activePlayers?: string[];
 }
 
-const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, onAdd, onRemove, onInput, colorClass, side }) => {
+const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, onAdd, onRemove, onInput, colorClass, side, activePlayers }) => {
   const bgClasses = colorClass === 'indigo' 
     ? (isActive ? 'bg-indigo-600/20 border-indigo-500/50 shadow-[inset_0_0_50px_rgba(99,102,241,0.1)]' : 'bg-white/5 border-white/5')
     : (isActive ? 'bg-emerald-600/20 border-emerald-500/50 shadow-[inset_0_0_50px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/5');
@@ -293,7 +298,19 @@ const ScoreSide: React.FC<ScoreSideProps> = ({ team, score, gamesWon, isActive, 
       </div>
 
       <div className="text-center mb-6 relative z-10 w-full px-4">
-        <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-3 drop-shadow-md truncate leading-tight">{team.name}</h3>
+        <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-1 drop-shadow-md truncate leading-tight">{team.name}</h3>
+        
+        {activePlayers && activePlayers.length > 0 && (
+          <div className="flex items-center justify-center gap-2 mb-3">
+             <Users className="w-3 h-3 text-white/40" />
+             <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest flex gap-1.5">
+                {activePlayers.map((p, i) => (
+                  <span key={i} className={p ? '' : 'text-white/20'}>{p || '???'}</span>
+                ))}
+             </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-center gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className={`w-10 h-2 rounded-full transition-all duration-500 ${i < gamesWon ? accentBg : 'bg-white/10'}`} />

@@ -20,9 +20,12 @@ import {
   LayoutGrid,
   ShieldCheck,
   UserCheck,
-  X
+  X,
+  UserPlus,
+  Settings,
+  CheckCircle2
 } from 'lucide-react';
-import { Team, Match, ViewState, StandingsEntry, GameScore, Tournament, HandbookSectionData } from './types';
+import { Team, Match, ViewState, StandingsEntry, GameScore, Tournament, HandbookSectionData, MatchLineup } from './types';
 import TeamManager from './components/TeamManager';
 import MatchManager from './components/MatchManager';
 import MatchScorer from './components/MatchScorer';
@@ -99,6 +102,7 @@ const App: React.FC = () => {
   const [showPinModal, setShowPinModal] = useState<boolean>(false);
   const [showScorerModal, setShowScorerModal] = useState<boolean>(false);
   const [showUmpireModal, setShowUmpireModal] = useState<boolean>(false);
+  const [showLineupModal, setShowLineupModal] = useState<boolean>(false);
   const [pinInput, setPinInput] = useState<string>("");
   const [umpireInput, setUmpireInput] = useState<string[]>(["", ""]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -312,7 +316,28 @@ const App: React.FC = () => {
     await api.updateMatch(updatedMatch);
     setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
     
+    const team1 = teams.find(t => t.id === match.team1Id);
+    const team2 = teams.find(t => t.id === match.team2Id);
+
     setShowUmpireModal(false);
+
+    // If either team has more than 2 members, offer lineup setup
+    if ((team1 && team1.members.length > 2) || (team2 && team2.members.length > 2)) {
+      setShowLineupModal(true);
+    } else {
+      setView('scorer');
+    }
+  };
+
+  const handleLineupSubmit = async (lineups: MatchLineup[]) => {
+    const match = matches.find(m => m.id === activeMatchId);
+    if (!match) return;
+
+    const updatedMatch: Match = { ...match, lineups };
+    await api.updateMatch(updatedMatch);
+    setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
+    
+    setShowLineupModal(false);
     setView('scorer');
   };
 
@@ -573,6 +598,15 @@ const App: React.FC = () => {
           eligibleTeams={eligibleUmpireTeams} 
         />
       )}
+      {showLineupModal && activeMatch && (
+        <LineupModal 
+          match={activeMatch}
+          team1={teams.find(t => t.id === activeMatch.team1Id)!}
+          team2={teams.find(t => t.id === activeMatch.team2Id)!}
+          onSubmit={handleLineupSubmit}
+          onCancel={() => { setShowLineupModal(false); setView('scorer'); }}
+        />
+      )}
       
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
         {(loading || isRefreshing) && (
@@ -667,6 +701,107 @@ const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCance
   </div>
 );
 
+const LineupModal = ({ match, team1, team2, onSubmit, onCancel }: { match: Match, team1: Team, team2: Team, onSubmit: (lineups: MatchLineup[]) => void, onCancel: () => void }) => {
+  const [lineups, setLineups] = useState<MatchLineup[]>(() => {
+    // Pre-fill with existing or empty defaults
+    if (match.lineups && match.lineups.length > 0) return JSON.parse(JSON.stringify(match.lineups));
+    return Array.from({ length: match.format }).map(() => ({
+      team1Players: [team1.members[0] || '', team1.members[1] || ''],
+      team2Players: [team2.members[0] || '', team2.members[1] || '']
+    }));
+  });
+
+  const updateLineup = (gameIdx: number, team: 1 | 2, playerIdx: number, val: string) => {
+    const next = [...lineups];
+    if (team === 1) next[gameIdx].team1Players[playerIdx] = val;
+    else next[gameIdx].team2Players[playerIdx] = val;
+    setLineups(next);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+      <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-8 max-w-4xl w-full shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto border border-white/40">
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="bg-indigo-100 p-4 rounded-3xl mb-4 text-indigo-600">
+            <Users className="w-8 h-8" />
+          </div>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Configure Match Lineups</h3>
+          <p className="text-slate-500 font-bold text-sm mt-1">Optionally select players for each set</p>
+        </div>
+
+        <div className="space-y-8">
+          {lineups.map((lineup, gameIdx) => (
+            <div key={gameIdx} className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+               <div className="flex items-center gap-2 mb-6">
+                  <span className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center text-xs font-black">G{gameIdx+1}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Game {gameIdx+1} Configuration</span>
+               </div>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Team 1 Selection */}
+                  <div className="space-y-4">
+                     <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block px-1">{team1.name}</label>
+                     <div className="grid grid-cols-2 gap-3">
+                        {[0, 1].map(pIdx => (
+                          <select 
+                            key={pIdx}
+                            value={lineup.team1Players[pIdx]}
+                            onChange={(e) => updateLineup(gameIdx, 1, pIdx, e.target.value)}
+                            className="bg-white border-2 border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-all"
+                          >
+                            <option value="">-- Player --</option>
+                            {team1.members.map(m => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Team 2 Selection */}
+                  <div className="space-y-4">
+                     <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest block px-1">{team2.name}</label>
+                     <div className="grid grid-cols-2 gap-3">
+                        {[0, 1].map(pIdx => (
+                          <select 
+                            key={pIdx}
+                            value={lineup.team2Players[pIdx]}
+                            onChange={(e) => updateLineup(gameIdx, 2, pIdx, e.target.value)}
+                            className="bg-white border-2 border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-emerald-500 transition-all"
+                          >
+                            <option value="">-- Player --</option>
+                            {team2.members.map(m => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-4 pt-8 sticky bottom-0 bg-white/80 backdrop-blur-sm -mx-8 px-8 pb-4">
+          <button 
+            onClick={() => onSubmit(lineups)}
+            className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2"
+          >
+            <CheckCircle2 className="w-5 h-5" />
+            Apply & Start
+          </button>
+          <button 
+            onClick={onCancel}
+            className="px-8 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+          >
+            Skip Selection
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const UmpireModal = ({ umpireInput, setUmpireInput, onSubmit, onCancel, eligibleTeams }: any) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
     <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95">
@@ -700,7 +835,7 @@ const UmpireModal = ({ umpireInput, setUmpireInput, onSubmit, onCancel, eligible
           </div>
         ))}
         <div className="flex gap-4 pt-4">
-          <button type="submit" className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all">Start Scoring</button>
+          <button type="submit" className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all">Proceed</button>
           <button type="button" onClick={onCancel} className="px-6 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all">Skip</button>
         </div>
       </form>
