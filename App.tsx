@@ -167,7 +167,7 @@ const App: React.FC = () => {
         status: 'active',
         matchPasscode: '0000',
         handbook: DEFAULT_HANDBOOK,
-        isLocked: false // Default to unlocked as requested
+        isLocked: false 
       };
       setTournaments(prev => [newTournament, ...prev]);
       await api.saveTournament(newTournament);
@@ -201,8 +201,6 @@ const App: React.FC = () => {
 
   const handleResetTournamentData = async () => {
     if (!selectedTournamentId) return;
-    
-    // Explicitly ask for PIN even if logged in as Admin for extra safety
     const confirmPin = window.prompt("WARNING: This will PERMANENTLY DELETE all teams and matches for this tournament. Enter Admin PIN to proceed:");
     
     if (confirmPin === ADMIN_PIN) {
@@ -254,7 +252,7 @@ const App: React.FC = () => {
   const handleUpdateMatch = async (updatedMatch: Match) => {
     try {
       await api.updateMatch(updatedMatch);
-      fetchData();
+      setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
     } catch (err: any) {
       alert(`Error updating match: ${err.message}`);
     }
@@ -321,7 +319,6 @@ const App: React.FC = () => {
 
     setShowUmpireModal(false);
 
-    // If either team has more than 2 members, offer lineup setup
     if ((team1 && team1.members.length > 2) || (team2 && team2.members.length > 2)) {
       setShowLineupModal(true);
     } else {
@@ -359,7 +356,6 @@ const App: React.FC = () => {
       setUmpireInput(["", ""]);
     }
 
-    // Skip PIN if tournament is unlocked OR user is already authenticated
     if (isAdmin || isScorer || !currentTournament?.isLocked) {
       setShowUmpireModal(true);
     } else {
@@ -371,7 +367,6 @@ const App: React.FC = () => {
     if (!isAdmin) return setShowPinModal(true);
     if (isCreatingMatchRef.current) return;
     
-    // Quick check to see if an identical uncompleted match was created in the last 2 seconds
     const recentDuplicate = matches.find(m => 
       m.status === 'scheduled' && 
       ((m.team1Id === t1 && m.team2Id === t2) || (m.team1Id === t2 && m.team2Id === t1)) &&
@@ -436,7 +431,6 @@ const App: React.FC = () => {
       if (match.winnerId === match.team1Id) {
         t1.wins += 1;
         t2.losses += 1;
-        // Points Calculation: 2-0 gives 3, 2-1 gives 2, 1-2 gives 1
         if (t1Games === 2 && t2Games === 0) t1.points += 3;
         else if (t1Games === 2 && t2Games === 1) {
           t1.points += 2;
@@ -471,18 +465,11 @@ const App: React.FC = () => {
     return Object.values(stats)
       .map(s => ({ ...s, pointDiff: s.pointsFor - s.pointsAgainst }))
       .sort((a, b) => {
-        // Priority 1: Tournament Points
         if (b.points !== a.points) return b.points - a.points;
-
-        // Priority 2: Match Wins
         if (b.wins !== a.wins) return b.wins - a.wins;
-        
-        // Priority 3: Net Sets
         const aNetGames = a.gamesWon - a.gamesLost;
         const bNetGames = b.gamesWon - b.gamesLost;
         if (bNetGames !== aNetGames) return bNetGames - aNetGames;
-        
-        // Priority 4: Head-to-Head
         const h2hMatch = matches.find(m => 
           m.status === 'completed' && 
           ((m.team1Id === a.teamId && m.team2Id === b.teamId) || 
@@ -492,8 +479,6 @@ const App: React.FC = () => {
           if (h2hMatch.winnerId === a.teamId) return -1;
           if (h2hMatch.winnerId === b.teamId) return 1;
         }
-
-        // Priority 5: Point Difference
         return b.pointDiff - a.pointDiff;
       });
   }, [teams, matches]);
@@ -512,12 +497,10 @@ const App: React.FC = () => {
     activeMatch ? (t.id !== activeMatch.team1Id && t.id !== activeMatch.team2Id) : true
   );
 
-  // If we haven't entered the arena yet, show the landing page
   if (showLanding) {
     return <LandingPage onEnter={() => setShowLanding(false)} />;
   }
 
-  // If no tournament is selected, show the selector
   if (!selectedTournamentId && !loading) {
     return (
       <div className="min-h-screen">
@@ -632,7 +615,7 @@ const App: React.FC = () => {
             teams={teams} 
             matches={matches} 
             tournamentId={selectedTournamentId!} 
-            onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); setView('matches'); }} 
+            onCreate={async (m) => { if(!isAdmin) return setShowPinModal(true); await api.saveMatch(m); fetchData(); }} 
             onBulkCreate={handleBulkCreateMatches}
             onUpdate={handleUpdateMatch}
             onDelete={async (id) => { if(!isAdmin) return setShowPinModal(true); await api.deleteMatch(id); fetchData(); }} 
@@ -641,7 +624,7 @@ const App: React.FC = () => {
             onAdminLogin={() => setShowPinModal(true)} 
           />
         )}
-        {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={async (m) => { await api.updateMatch(m); fetchData(); }} onFinish={() => setView('matches')} />}
+        {view === 'scorer' && activeMatch && <MatchScorer match={activeMatch} team1={teams.find(t => t.id === activeMatch.team1Id)!} team2={teams.find(t => t.id === activeMatch.team2Id)!} onUpdate={handleUpdateMatch} onFinish={() => setView('matches')} />}
         {view === 'standings' && (
           <Standings 
             standings={standings} 
@@ -703,17 +686,16 @@ const PinModal = ({ title, description, pinInput, setPinInput, onSubmit, onCance
 
 const LineupModal = ({ match, team1, team2, onSubmit, onCancel }: { match: Match, team1: Team, team2: Team, onSubmit: (lineups: MatchLineup[]) => void, onCancel: () => void }) => {
   const [lineups, setLineups] = useState<MatchLineup[]>(() => {
-    // Pre-fill with existing or empty defaults
-    if (match.lineups && match.lineups.length > 0) return JSON.parse(JSON.stringify(match.lineups));
+    if (match.lineups && match.lineups.length >= match.format) return JSON.parse(JSON.stringify(match.lineups));
     return Array.from({ length: match.format }).map(() => ({
       team1Players: [team1.members[0] || '', team1.members[1] || ''],
       team2Players: [team2.members[0] || '', team2.members[1] || '']
     }));
   });
 
-  const updateLineup = (gameIdx: number, team: 1 | 2, playerIdx: number, val: string) => {
+  const updateLineup = (gameIdx: number, teamNum: 1 | 2, playerIdx: number, val: string) => {
     const next = [...lineups];
-    if (team === 1) next[gameIdx].team1Players[playerIdx] = val;
+    if (teamNum === 1) next[gameIdx].team1Players[playerIdx] = val;
     else next[gameIdx].team2Players[playerIdx] = val;
     setLineups(next);
   };
@@ -738,7 +720,6 @@ const LineupModal = ({ match, team1, team2, onSubmit, onCancel }: { match: Match
                </div>
                
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Team 1 Selection */}
                   <div className="space-y-4">
                      <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block px-1">{team1.name}</label>
                      <div className="grid grid-cols-2 gap-3">
@@ -758,7 +739,6 @@ const LineupModal = ({ match, team1, team2, onSubmit, onCancel }: { match: Match
                      </div>
                   </div>
 
-                  {/* Team 2 Selection */}
                   <div className="space-y-4">
                      <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest block px-1">{team2.name}</label>
                      <div className="grid grid-cols-2 gap-3">

@@ -29,7 +29,6 @@ const toSnakeCasePayload = (obj: any) => {
   if (obj.team1Id) snake.team1_id = obj.team1Id;
   if (obj.team2Id) snake.team2_id = obj.team2Id;
 
-  // Use hasOwnProperty to ensure we send null to the DB when clearing the winner
   if (Object.prototype.hasOwnProperty.call(obj, 'winnerId')) {
     snake.winner_id = obj.winnerId || null;
   }
@@ -60,6 +59,7 @@ const toSnakeCasePayload = (obj: any) => {
   }
 
   if (Object.prototype.hasOwnProperty.call(obj, 'lineups')) {
+    // Keep as lineups to match typical table naming, but ensure it's JSON serializable
     snake.lineups = Array.isArray(obj.lineups) ? obj.lineups : [];
   }
   
