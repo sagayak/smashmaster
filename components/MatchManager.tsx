@@ -17,7 +17,10 @@ import {
   Table as TableIcon,
   ChevronRight,
   Clock,
-  UserCheck
+  UserCheck,
+  Download,
+  Printer,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Team, Match, GameScore, MatchStatus } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
@@ -94,6 +97,39 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
     setIsCreating(false);
   };
 
+  const handleExportCSV = () => {
+    const headers = ["Sequence", "Date", "Time", "Team 1", "Team 2", "Umpires", "Result", "Status"];
+    const rows = sortedMatches.map(m => {
+      const t1Wins = m.scores.filter(s => s.team1 > s.team2).length;
+      const t2Wins = m.scores.filter(s => s.team2 > s.team1).length;
+      return [
+        m.order,
+        m.scheduledAt ? new Date(m.scheduledAt).toLocaleDateString() : 'TBD',
+        m.scheduledAt ? new Date(m.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD',
+        getTeamName(m.team1Id).replace(/,/g, ''),
+        getTeamName(m.team2Id).replace(/,/g, ''),
+        (m.umpireNames?.join(' & ') || 'Unassigned').replace(/,/g, ''),
+        m.status === 'completed' ? `${t1Wins}-${t2Wins}` : '--',
+        m.status
+      ];
+    });
+    
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `match_ledger_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintLedger = () => {
+    window.print();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
@@ -157,7 +193,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
 
   return (
     <div className="space-y-12">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center print:hidden">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Matches</h2>
           <p className="text-slate-500">Scheduled tie-ups and court progression</p>
@@ -172,7 +208,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       </div>
 
       {(isCreating || editingMatch) && isAdmin && (
-        <div className="bg-white border-2 border-indigo-500 rounded-3xl p-8 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="bg-white border-2 border-indigo-500 rounded-3xl p-8 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300 print:hidden">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-indigo-600 p-2 rounded-xl"><Settings2 className="w-5 h-5 text-white" /></div>
             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">{editingMatch ? `Edit Match #${editingMatch.order}` : 'Schedule New Match'}</h3>
@@ -242,7 +278,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       )}
 
       {/* Main Grid View */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:hidden">
         {sortedMatches.map((match) => {
           const t1 = teams.find(t => t.id === match.team1Id);
           const t2 = teams.find(t => t.id === match.team2Id);
@@ -341,26 +377,44 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
       </div>
 
       {/* Match Ledger Table with Umpire Duty Column */}
-      <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 print:shadow-none print:border-none print:rounded-none">
+        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 print:bg-white print:px-0">
           <div className="flex items-center gap-3">
-            <div className="bg-slate-900 p-2 rounded-xl"><TableIcon className="w-5 h-5 text-white" /></div>
+            <div className="bg-slate-900 p-2 rounded-xl print:hidden"><TableIcon className="w-5 h-5 text-white" /></div>
             <div>
               <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Match Ledger</h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">Full Schedule (Sorted by Date & Order)</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5 print:hidden">Full Schedule (Sorted by Date & Order)</p>
             </div>
           </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2 print:hidden">
+               <button 
+                 onClick={handleExportCSV}
+                 className="flex items-center gap-2 bg-white/40 border border-slate-200 px-4 py-2 rounded-xl text-slate-700 font-black uppercase tracking-widest text-[9px] hover:bg-white hover:border-indigo-400 transition-all shadow-sm"
+               >
+                 <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-500" />
+                 Export CSV
+               </button>
+               <button 
+                 onClick={handlePrintLedger}
+                 className="flex items-center gap-2 bg-slate-900 border border-slate-900 px-4 py-2 rounded-xl text-white font-black uppercase tracking-widest text-[9px] hover:bg-black transition-all shadow-xl"
+               >
+                 <Printer className="w-3.5 h-3.5 text-indigo-400" />
+                 Export PDF
+               </button>
+            </div>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-slate-50 border-b border-slate-200 print:bg-transparent">
                 <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Sequence</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Date/Time</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Matchup</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Umpire Duty</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Result</th>
-                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Status</th>
+                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right print:hidden">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -371,7 +425,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                 const t2Games = m.scores.filter(s => s.team2 > s.team1).length;
 
                 return (
-                  <tr key={m.id} className="hover:bg-indigo-50 transition-all group">
+                  <tr key={m.id} className="hover:bg-indigo-50 transition-all group print:hover:bg-transparent">
                     <td className="px-8 py-5">
                       <div className="font-black text-slate-400">#{m.order}</div>
                     </td>
@@ -409,7 +463,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                          <span className="text-slate-300 font-black">--</span>
                        )}
                     </td>
-                    <td className="px-8 py-5 text-right">
+                    <td className="px-8 py-5 text-right print:hidden">
                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                          m.status === 'completed' ? 'bg-slate-100 text-slate-400' :
                          m.status === 'live' ? 'bg-red-500 text-white shadow-lg shadow-red-100' :
@@ -425,6 +479,14 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
           </table>
         </div>
       </section>
+      
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .match-ledger-section, .match-ledger-section * { visibility: visible; }
+          .match-ledger-section { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+      `}</style>
     </div>
   );
 };
