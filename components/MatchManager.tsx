@@ -16,7 +16,8 @@ import {
   Users,
   Table as TableIcon,
   ChevronRight,
-  Clock
+  Clock,
+  UserCheck
 } from 'lucide-react';
 import { Team, Match, GameScore, MatchStatus } from '../types';
 import { FORMATS, POINTS_TARGETS } from '../constants';
@@ -207,6 +208,33 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                    <div className="space-y-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Points</span><select value={pointsTarget} onChange={(e) => setPointsTarget(parseInt(e.target.value) as 15|21|30)} className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50">{POINTS_TARGETS.map(p => <option key={p} value={p}>{p} Pts</option>)}</select></div>
                 </div>
               </div>
+
+              <div className="space-y-4 col-span-1 md:col-span-2">
+                <label className="block text-sm font-black text-slate-700 uppercase tracking-widest">Assign Umpire Duties (Optional)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {umpireInputs.map((val, i) => (
+                    <div key={i} className="space-y-2">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Official {i + 1}</span>
+                      <select 
+                        value={val} 
+                        onChange={(e) => {
+                          const next = [...umpireInputs];
+                          next[i] = e.target.value;
+                          setUmpireInputs(next);
+                        }} 
+                        className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50"
+                      >
+                        <option value="">-- Select Team --</option>
+                        {teams.map(t => (
+                          <option key={t.id} value={t.name} disabled={t.id === team1Id || t.id === team2Id || (umpireInputs.includes(t.name) && val !== t.name)}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex gap-4"><button type="submit" className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-3"><Save className="w-5 h-5" />{editingMatch ? 'Update Match' : 'Schedule Match'}</button><button type="button" onClick={resetForm} className="px-8 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-200">Cancel</button></div>
           </form>
@@ -224,8 +252,23 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
               <div className="p-6">
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2"><div className="bg-slate-900 text-white px-2 py-1 rounded text-[10px] font-black">#{match.order}</div><span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${match.status === 'completed' ? 'bg-slate-100 text-slate-600' : match.status === 'live' ? 'bg-red-600 text-white' : 'bg-emerald-100 text-emerald-700'}`}>{match.status}</span></div>
-                    {match.scheduledAt && <div className="flex items-center gap-1.5 text-indigo-600 text-[10px] font-black uppercase"><Calendar className="w-3 h-3" />{new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
+                    <div className="flex items-center gap-2">
+                      <div className="bg-slate-900 text-white px-2 py-1 rounded text-[10px] font-black">#{match.order}</div>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${match.status === 'completed' ? 'bg-slate-100 text-slate-600' : match.status === 'live' ? 'bg-red-600 text-white' : 'bg-emerald-100 text-emerald-700'}`}>{match.status}</span>
+                    </div>
+                    {match.scheduledAt && (
+                      <div className="flex items-center gap-1.5 text-indigo-600 text-[10px] font-black uppercase">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(match.scheduledAt).toLocaleDateString()} @ {new Date(match.scheduledAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                      </div>
+                    )}
+                    {/* Umpire Duty Display in Card */}
+                    {match.umpireNames && match.umpireNames.length > 0 && (
+                      <div className="flex items-center gap-1.5 text-amber-600 text-[10px] font-black uppercase">
+                        <UserCheck className="w-3 h-3" />
+                        Officials: {match.umpireNames.join(' & ')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -297,7 +340,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
         })}
       </div>
 
-      {/* Match Ledger Table */}
+      {/* Match Ledger Table with Umpire Duty Column */}
       <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
@@ -315,6 +358,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                 <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Sequence</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Date/Time</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Matchup</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Umpire Duty</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Result</th>
                 <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Status</th>
               </tr>
@@ -334,7 +378,7 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                     <td className="px-6 py-5">
                       <div className="flex flex-col">
                         <div className="text-xs font-black text-slate-900 flex items-center gap-1.5"><Calendar className="w-3 h-3 text-indigo-500" />{m.scheduledAt ? new Date(m.scheduledAt).toLocaleDateString() : 'TBD'}</div>
-                        <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 mt-0.5"><Clock className="w-3 h-3" />{m.scheduledAt ? new Date(m.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}</div>
+                        <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 mt-0.5"><Clock className="w-3 h-3" />{m.scheduledAt ? new Date(m.scheduledAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : 'TBD'}</div>
                       </div>
                     </td>
                     <td className="px-6 py-5">
@@ -342,6 +386,18 @@ const MatchManager: React.FC<MatchManagerProps> = ({ teams, matches, tournamentI
                         <span className={`font-black ${m.winnerId === m.team1Id ? 'text-indigo-600' : 'text-slate-700'}`}>{t1}</span>
                         <span className="text-[9px] font-black text-slate-300">VS</span>
                         <span className={`font-black ${m.winnerId === m.team2Id ? 'text-indigo-600' : 'text-slate-700'}`}>{t2}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">
+                        {m.umpireNames && m.umpireNames.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <UserCheck className="w-3 h-3 text-amber-500" />
+                            {m.umpireNames.join(' & ')}
+                          </div>
+                        ) : (
+                          <span className="text-slate-300">Unassigned</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-5 text-center">

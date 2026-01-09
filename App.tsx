@@ -96,7 +96,7 @@ const App: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
-  const [lastSaved, setLastSaved] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+  const [lastSaved, setLastSaved] = useState<string>(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }));
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isScorer, setIsScorer] = useState<boolean>(false);
   const [showPinModal, setShowPinModal] = useState<boolean>(false);
@@ -131,7 +131,7 @@ const App: React.FC = () => {
       ]);
       setTeams(t);
       setMatches(m);
-      setLastSaved(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+      setLastSaved(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }));
     } catch (err: any) {
       console.error("Failed to fetch data:", err);
     } finally {

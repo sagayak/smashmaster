@@ -181,7 +181,7 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                                </div>
                                <div className="flex items-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest">
                                  <Clock className="w-3 h-3" />
-                                 {match.scheduledAt ? new Date(match.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}
+                                 {match.scheduledAt ? new Date(match.scheduledAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : 'TBD'}
                                </div>
                              </div>
                            </td>
