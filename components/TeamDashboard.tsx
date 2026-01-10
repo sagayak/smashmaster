@@ -48,7 +48,7 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
 
   const form = completedMatches.slice(0, 5).map(m => m.winnerId === team.id ? 'W' : 'L').reverse();
 
-  const getTeamName = (id: string) => teams.find(t => t.id === id)?.name || 'Deleted Team';
+  const getTeam = (id: string) => teams.find(t => t.id === id);
 
   // Head-to-Head Aggregation
   const h2h = teams.filter(t => t.id !== team.id).map(opponent => {
@@ -170,7 +170,10 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                    {remainingMatches.length === 0 ? (<tr><td colSpan={4} className="py-20 text-center text-slate-400 italic font-medium">No upcoming fixtures found.</td></tr>) : (
                      remainingMatches.map(match => {
                        const isTeam1 = match.team1Id === team.id;
-                       const opponentName = getTeamName(isTeam1 ? match.team2Id : match.team1Id);
+                       const opponent = getTeam(isTeam1 ? match.team2Id : match.team1Id);
+                       const opponentName = opponent?.name || 'Deleted Team';
+                       const opponentMembers = opponent?.members || [];
+
                        return (
                          <tr key={match.id} className="hover:bg-indigo-50/30 transition-colors group">
                            <td className="px-8 py-5">
@@ -187,8 +190,15 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                            </td>
                            <td className="px-6 py-5">
                              <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center font-black text-indigo-400">{opponentName.charAt(0)}</div>
-                               <div className="font-black text-slate-900 text-sm">{opponentName}</div>
+                               <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center font-black text-indigo-400 shrink-0">{opponentName.charAt(0)}</div>
+                               <div>
+                                 <div className="font-black text-slate-900 text-sm">{opponentName}</div>
+                                 <div className="flex flex-wrap gap-1 mt-1">
+                                   {opponentMembers.map((m, i) => (
+                                     <span key={i} className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">{m}</span>
+                                   ))}
+                                 </div>
+                               </div>
                              </div>
                            </td>
                            <td className="px-6 py-5">
@@ -218,17 +228,27 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ team, matches, teams, sta
                <div className="space-y-4">
                  {completedMatches.map(match => {
                    const isTeam1 = match.team1Id === team.id;
-                   const opponentName = getTeamName(isTeam1 ? match.team2Id : match.team1Id);
+                   const opponent = getTeam(isTeam1 ? match.team2Id : match.team1Id);
+                   const opponentName = opponent?.name || 'Deleted Team';
+                   const opponentMembers = opponent?.members || [];
                    const isWinner = match.winnerId === team.id;
                    return (
                      <div key={match.id} className="p-5 border border-slate-100 rounded-3xl bg-slate-50/50 flex flex-col md:flex-row items-center gap-6 group hover:bg-white transition-all shadow-sm">
                         <div className="flex flex-col items-center md:items-start min-w-[100px]"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest mb-1 ${isWinner ? 'bg-emerald-500 text-white shadow-lg' : 'bg-red-500 text-white shadow-lg'}`}>{isWinner ? 'Victory' : 'Defeat'}</span><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Match #{match.order}</span></div>
-                        <div className="flex-1 flex items-center justify-center gap-6 text-center">
-                           <span className="font-black text-slate-900 text-sm truncate max-w-[80px]">{team.name}</span>
-                           <div className="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-[10px] font-black tabular-nums">
-                             {match.scores.filter(s => isTeam1 ? s.team1 > s.team2 : s.team2 > s.team1).length} - {match.scores.filter(s => isTeam1 ? s.team2 > s.team1 : s.team1 > s.team2).length}
+                        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
+                           <div className="flex items-center gap-6">
+                             <span className="font-black text-slate-900 text-sm truncate max-w-[80px]">{team.name}</span>
+                             <div className="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-[10px] font-black tabular-nums">
+                               {match.scores.filter(s => isTeam1 ? s.team1 > s.team2 : s.team2 > s.team1).length} - {match.scores.filter(s => isTeam1 ? s.team2 > s.team1 : s.team1 > s.team2).length}
+                             </div>
+                             <span className="font-black text-slate-900 text-sm truncate max-w-[80px]">{opponentName}</span>
                            </div>
-                           <span className="font-black text-slate-900 text-sm truncate max-w-[80px]">{opponentName}</span>
+                           <div className="flex flex-wrap justify-center gap-1">
+                             <span className="text-[8px] text-slate-400 uppercase font-bold mr-1">Opponent Members:</span>
+                             {opponentMembers.map((m, i) => (
+                               <span key={i} className="text-[8px] bg-slate-200/50 text-slate-600 px-1.5 py-0.5 rounded font-bold">{m}</span>
+                             ))}
+                           </div>
                         </div>
                         <div className="flex flex-col gap-1">
                            {match.lineups?.slice(0, match.scores.length).map((l, idx) => (
